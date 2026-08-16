@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Officer Portal — BVSW Math NHS</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .portal-mode-button { background:transparent; color:var(--navy); border-color:var(--line); }
+  .portal-mode-button.active { background:var(--navy); color:white; border-color:var(--navy); }
+  .portal-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 28px; }
+  .portal-tabs .btn { justify-content:center; }
+  .portal-tab-panel[hidden] { display:none; }
+  .content-editor { text-align:left; }
+  .content-editor > h2, .content-editor > .eyebrow { text-align:center; }
+  .content-editor-block { background:var(--white); border:1px solid var(--line); border-radius:var(--radius); padding:20px; margin-top:18px; }
+  .content-editor-block h3 { margin-top:0; }
+  .content-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .content-fields label, .repeat-editor-row label { display:grid; gap:6px; font-family:var(--font-mono); font-size:.74rem; color:var(--slate); }
+  .content-fields input, .content-fields textarea, .repeat-editor-row input, .repeat-editor-row textarea { width:100%; padding:10px 11px; border:1px solid var(--line); border-radius:var(--radius); font:inherit; font-family:var(--font-body); color:var(--ink); background:var(--white); }
+  .content-fields textarea, .repeat-editor-row textarea { min-height:84px; resize:vertical; }
+  .field-wide { grid-column:1 / -1; }
+  .repeat-editor-list { display:grid; gap:12px; margin:14px 0; }
+  .repeat-editor-row { display:grid; grid-template-columns:140px 1fr 2fr auto; gap:10px; align-items:end; padding:14px; background:var(--pale); border-radius:var(--radius); }
+  .repeat-editor-row.board-row { grid-template-columns:1fr 1.4fr auto; }
+  @media (max-width:760px) {
+    .portal-tabs, .content-fields, .repeat-editor-row, .repeat-editor-row.board-row { grid-template-columns:1fr; }
+    .field-wide { grid-column:auto; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <img class="brand-logo" src="assets/math-nhs-logo.png" alt="">
+      <span class="name">BVSW Math NHS</span>
+    </a>
+    <ul class="nav-links" style="position:static;">
+      <li><a href="index.html">&larr; Back to site</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div id="lockoutView" class="lockout" style="display:none;">
+  <p class="eyebrow" style="justify-content:center;color:#7A2C27;">Locked</p>
+  <h3>Too many failed attempts</h3>
+  <span class="num" id="lockoutTimer"></span>
+  <p style="margin:0;">Try again later, or ask another officer to reset access from the Supabase dashboard.</p>
+</div>
+
+<form id="gateView" class="gate">
+  <p class="eyebrow" style="justify-content:center;">Officers only</p>
+  <h3>Sign in</h3>
+  <input type="email" id="emailInput" placeholder="Officer email" autocomplete="username" style="letter-spacing:normal;text-align:left;margin-bottom:8px;">
+  <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password" style="letter-spacing:normal;text-align:left;">
+  <p class="error" id="gateError"></p>
+  <p style="font-size:0.75rem;color:var(--slate);" id="attemptsLeft"></p>
+  <button type="submit" class="btn btn-navy" id="loginBtn" style="width:100%;">Sign in</button>
+</form>
+
+<div id="adminView" class="qr-admin" style="display:none;">
+  <div class="portal-tabs" role="tablist" aria-label="Officer portal sections">
+    <button class="btn btn-navy portal-main-tab" type="button" role="tab" aria-selected="true" data-portal-tab="meetings">Meetings</button>
+    <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="work">Requests &amp; inbox</button>
+    <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="content">Site content</button>
+  </div>
+
+  <div class="portal-tab-panel" id="portalPanelMeetings" role="tabpanel">
+  <p class="eyebrow" style="justify-content:center;">This meeting's attendance</p>
+  <h2>Update attendance check-in</h2>
+
+  <div style="display:flex;gap:8px;justify-content:center;margin:18px 0;">
+    <button type="button" class="btn btn-ghost portal-mode-button active" id="modeQR" aria-pressed="true">Attendance QR</button>
+    <button type="button" class="btn btn-ghost portal-mode-button" id="modeLink" aria-pressed="false">Attendance link</button>
+  </div>
+
+  <div id="qrMode">
+    <div class="current" id="qrPreview">No QR code uploaded yet</div>
+    <input type="file" id="qrUpload" accept="image/*">
+    <button class="btn btn-outline" type="button" id="clearQrBtn" style="margin-top:12px;">Clear attendance QR</button>
+  </div>
+
+  <div id="linkMode" style="display:none;">
+    <p class="note" style="text-align:left;margin-top:0;">Use the attendance/check-in URL for this meeting. This is not a video-call or meeting-join link.</p>
+    <input type="url" id="linkInput" placeholder="https://attendance-link..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);">
+    <button class="btn btn-navy" type="button" id="saveLinkBtn" style="margin-top:12px;">Save attendance link</button>
+    <p class="note" style="text-align:left;">Leave the field blank and save to clear the old link.</p>
+  </div>
+
+  <p class="form-msg" id="adminMsg"></p>
+
+  <p class="note" style="text-align:left;">This updates instantly for every visitor on the Meetings page &mdash; no re-upload needed.</p>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:28px 0;">
+
+  <p class="eyebrow" style="justify-content:center;">This week's slides</p>
+  <p class="note" style="text-align:left;margin-top:0;">Paste a published Google Slides URL below. You can paste either the published viewing link or an embed link; the portal will automatically convert it to the correct embed format.</p>
+  <input type="url" id="slidesInput" placeholder="https://docs.google.com/presentation/d/e/.../pub?..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);font-size:0.85rem;">
+  <button class="btn btn-navy" type="button" id="saveSlidesBtn" style="margin-top:12px;">Save slides</button>
+  <p class="note" style="text-align:left;">Leave the field blank and save to clear the old slides.</p>
+  <p class="form-msg" id="slidesMsg"></p>
+
+  </div>
+
+  <div class="portal-tab-panel" id="portalPanelWork" role="tabpanel" hidden>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:32px 0;">
+
+  <section class="portal-tutoring" aria-labelledby="tutoringAdminTitle">
+    <p class="eyebrow" style="justify-content:center;">Tutoring requests</p>
+    <h2 id="tutoringAdminTitle">Review &amp; confirm tutoring</h2>
+    <p class="note" style="text-align:left;">Students choose a Tuesday or Thursday. Set the final time here, then confirm the request to post a privacy-safe session to the public tutoring calendar. Once email delivery is connected, the student also receives a calendar event with a 5:00 PM reminder the day before.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 20px;">
+      <button class="btn btn-navy" type="button" id="showPendingTutoring">Pending</button>
+      <button class="btn btn-outline" type="button" id="showConfirmedTutoring">Confirmed</button>
+      <button class="btn btn-outline" type="button" id="refreshTutoring">Refresh</button>
+    </div>
+    <p class="form-msg" id="tutoringAdminMsg"></p>
+    <div id="tutoringRequestsList" class="portal-request-list"></div>
+  </section>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:32px 0;">
+
+  <section class="portal-messages" aria-labelledby="boardMessagesTitle">
+    <p class="eyebrow" style="justify-content:center;">Board inbox</p>
+    <h2 id="boardMessagesTitle">Website messages</h2>
+    <p class="note" style="text-align:left;">Messages submitted through the contact form appear here for officers only.</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 20px;">
+      <button class="btn btn-navy" type="button" id="showNewMessages">New</button>
+      <button class="btn btn-outline" type="button" id="showAllMessages">All</button>
+      <button class="btn btn-outline" type="button" id="refreshMessages">Refresh</button>
+    </div>
+    <p class="form-msg" id="boardMessagesMsg"></p>
+    <div id="boardMessagesList" class="portal-message-list"></div>
+  </section>
+
+  </div>
+
+  <div class="portal-tab-panel content-editor" id="portalPanelContent" role="tabpanel" hidden>
+    <p class="eyebrow" style="justify-content:center;">No-code website editor</p>
+    <h2>Update public site content</h2>
+    <p class="note">Changes go live as soon as you save. Use the add and remove buttons; no HTML or database editing is needed.</p>
+
+    <div class="content-editor-block">
+      <h3>Homepage announcements</h3>
+      <p class="note">These cards rotate through the Upcoming carousel in the order shown.</p>
+      <div class="repeat-editor-list" id="announcementEditor"></div>
+      <button class="btn btn-outline" type="button" id="addAnnouncementBtn">Add announcement</button>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Monthly poster</h3>
+      <div class="content-fields">
+        <label>Month label<input id="posterMonthInput" type="text" maxlength="80" placeholder="October poster"></label>
+        <label>Theme or headline<input id="posterThemeInput" type="text" maxlength="140" placeholder="Make math worth stopping for"></label>
+        <label class="field-wide">Monthly details<textarea id="posterDescriptionInput" maxlength="700" placeholder="Theme, instructions, or other details for this month"></textarea></label>
+        <label class="field-wide">Due-date label<input id="posterDueInput" type="text" maxlength="120" placeholder="Due October 30"></label>
+      </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Points tracker</h3>
+      <div class="content-fields">
+        <label class="field-wide">Google Sheet URL<input id="pointsTrackerInput" type="url" placeholder="https://docs.google.com/spreadsheets/..."></label>
+      </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Board members</h3>
+      <div class="content-fields">
+        <label class="field-wide">School year<input id="boardYearInput" type="text" maxlength="30" placeholder="2026–2027"></label>
+      </div>
+      <div class="repeat-editor-list" id="boardEditor"></div>
+      <button class="btn btn-outline" type="button" id="addBoardMemberBtn">Add board member</button>
+      <p class="note">If the list is empty, the homepage automatically shows “New board roster coming soon.”</p>
+    </div>
+
+    <button class="btn btn-navy" type="button" id="saveSiteContentBtn" style="margin-top:20px;">Save site content</button>
+    <p class="form-msg" id="siteContentMsg" role="status"></p>
+  </div>
+
+  <button class="btn btn-ghost" id="logoutBtn" style="margin-top:28px;background:var(--navy);color:white;">Sign out</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script>
+  const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+  });
+
+  const gateView = document.getElementById("gateView");
+  const adminView = document.getElementById("adminView");
+  const lockoutView = document.getElementById("lockoutView");
+  const error = document.getElementById("gateError");
+  const attemptsLeft = document.getElementById("attemptsLeft");
+
+  const LOCK_KEY = "portalLock";
+  const ATTEMPT_KEY = "portalAttempts";
+  const MAX_ATTEMPTS = 3;
+  const LOCK_HOURS = 24;
+
+  function checkLock() {
+    const lock = JSON.parse(localStorage.getItem(LOCK_KEY) || "null");
+    if (lock && Date.now() < lock.until) {
+      gateView.style.display = "none";
+      lockoutView.style.display = "block";
+      const hrsLeft = Math.ceil((lock.until - Date.now()) / 3600000);
+      document.getElementById("lockoutTimer").textContent = `~${hrsLeft}h remaining`;
+      return true;
+    }
+    if (lock) localStorage.removeItem(LOCK_KEY);
+    return false;
+  }
+
+  function recordFailedAttempt() {
+    let attempts = parseInt(localStorage.getItem(ATTEMPT_KEY) || "0", 10) + 1;
+    if (attempts >= MAX_ATTEMPTS) {
+      localStorage.setItem(LOCK_KEY, JSON.stringify({ until: Date.now() + LOCK_HOURS * 3600000 }));
+      localStorage.removeItem(ATTEMPT_KEY);
+      checkLock();
+    } else {
+      localStorage.setItem(ATTEMPT_KEY, String(attempts));
+      attemptsLeft.textContent = `${MAX_ATTEMPTS - attempts} attempt(s) left before a 24h lock.`;
+    }
+  }
+
+  async function openOfficerPortal(userId) {
+    const { data: officer, error: officerErr } = await sb.from("officers")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (officerErr || !officer) {
+      await sb.auth.signOut();
+      error.textContent = "This account is not registered as a Math NHS officer.";
+      gateView.style.display = "block";
+      adminView.style.display = "none";
+      return;
+    }
+    gateView.style.display = "none";
+    adminView.style.display = "block";
+    loadCurrent();
+    loadTutoringRequests();
+    loadBoardMessages();
+    loadSiteContent();
+  }
+
+  if (!checkLock()) {
+    async function signInOfficer() {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
+      if (!email || !password) {
+        error.textContent = "Enter your email and password.";
+        return;
+      }
+      error.textContent = "";
+      const { data, error: authErr } = await sb.auth.signInWithPassword({ email, password });
+      if (authErr) {
+        console.error("Supabase sign-in failed:", authErr);
+        error.textContent = `Sign-in failed: ${authErr.message}`;
+        recordFailedAttempt();
+      } else {
+        localStorage.removeItem(ATTEMPT_KEY);
+        openOfficerPortal(data.user.id);
+      }
+    }
+
+    gateView.addEventListener("submit", (event) => {
+      event.preventDefault();
+      signInOfficer();
+    });
+  }
+
+  function setPortalTab(name) {
+    const panels = {
+      meetings: document.getElementById("portalPanelMeetings"),
+      work: document.getElementById("portalPanelWork"),
+      content: document.getElementById("portalPanelContent")
+    };
+    Object.entries(panels).forEach(([key, panel]) => { panel.hidden = key !== name; });
+    document.querySelectorAll(".portal-main-tab").forEach((button) => {
+      const active = button.dataset.portalTab === name;
+      button.className = `btn ${active ? "btn-navy" : "btn-outline"} portal-main-tab`;
+      button.setAttribute("aria-selected", String(active));
+    });
+  }
+
+  document.querySelectorAll(".portal-main-tab").forEach((button) => {
+    button.addEventListener("click", () => setPortalTab(button.dataset.portalTab));
+  });
+
+  async function loadCurrent() {
+    showQrPreview(null);
+    document.getElementById("linkInput").value = "";
+    document.getElementById("slidesInput").value = "";
+    const { data, error: meetingErr } = await sb.from("current_meeting_access").select("*").eq("id", 1).single();
+    if (meetingErr) console.error("Could not load meeting access:", meetingErr);
+    if (data && data.kind === "qr" && data.value) {
+      showQrPreview(data.value);
+      setAttendanceMode("qr");
+    } else if (data && data.kind === "link" && data.value) {
+      document.getElementById("linkInput").value = data.value;
+      setAttendanceMode("link");
+    } else {
+      setAttendanceMode("qr");
+    }
+    const { data: slides, error: slidesLoadErr } = await sb.from("current_slides").select("*").eq("id", 1).maybeSingle();
+    if (slidesLoadErr) console.error("Could not load slides:", slidesLoadErr);
+    if (slides && slides.embed_url) {
+      document.getElementById("slidesInput").value = slides.embed_url;
+    }
+  }
+
+  function setAttendanceMode(mode) {
+    const isQr = mode === "qr";
+    document.getElementById("qrMode").style.display = isQr ? "block" : "none";
+    document.getElementById("linkMode").style.display = isQr ? "none" : "block";
+    document.getElementById("modeQR").classList.toggle("active", isQr);
+    document.getElementById("modeLink").classList.toggle("active", !isQr);
+    document.getElementById("modeQR").setAttribute("aria-pressed", String(isQr));
+    document.getElementById("modeLink").setAttribute("aria-pressed", String(!isQr));
+  }
+
+  document.getElementById("modeQR").addEventListener("click", () => setAttendanceMode("qr"));
+  document.getElementById("modeLink").addEventListener("click", () => setAttendanceMode("link"));
+
+  function safeHttpsUrl(rawUrl) {
+    try {
+      const url = new URL(rawUrl);
+      return url.protocol === "https:" ? url.toString() : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function showQrPreview(rawUrl) {
+    const url = safeHttpsUrl(rawUrl);
+    const preview = document.getElementById("qrPreview");
+    preview.replaceChildren();
+    if (!url) {
+      preview.textContent = "No valid QR code uploaded yet";
+      return;
+    }
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = "Current meeting QR code";
+    preview.appendChild(image);
+  }
+
+  document.getElementById("qrUpload").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const msg = document.getElementById("adminMsg");
+    const allowedTypes = {
+      "image/png": "png",
+      "image/jpeg": "jpg",
+      "image/webp": "webp"
+    };
+    const extension = allowedTypes[file.type];
+    if (!extension) {
+      msg.textContent = "Upload a PNG, JPG, or WebP image.";
+      msg.className = "form-msg err";
+      e.target.value = "";
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      msg.textContent = "The QR image must be 5 MB or smaller.";
+      msg.className = "form-msg err";
+      e.target.value = "";
+      return;
+    }
+
+    e.target.disabled = true;
+    msg.textContent = "Uploading…";
+    msg.className = "form-msg";
+    const path = `meeting-qr-${Date.now()}.${extension}`;
+    const { error: upErr } = await sb.storage.from("meeting-qr").upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false
+    });
+    if (upErr) {
+      console.error("QR upload failed:", upErr);
+      msg.textContent = `Upload failed: ${upErr.message}`;
+      msg.className = "form-msg err";
+      e.target.disabled = false;
+      e.target.value = "";
+      return;
+    }
+    const { data: pub } = sb.storage.from("meeting-qr").getPublicUrl(path);
+    const publicUrl = safeHttpsUrl(pub?.publicUrl);
+    if (!publicUrl) {
+      msg.textContent = "The image uploaded, but its public URL was invalid.";
+      msg.className = "form-msg err";
+      e.target.disabled = false;
+      e.target.value = "";
+      return;
+    }
+    const { error: saveQrErr } = await sb.from("current_meeting_access").upsert({
+      id: 1,
+      kind: "qr",
+      value: publicUrl,
+      updated_at: new Date().toISOString()
+    });
+    if (saveQrErr) {
+      console.error("QR database save failed:", saveQrErr);
+      msg.textContent = `QR uploaded, but database save failed: ${saveQrErr.message}`;
+      msg.className = "form-msg err";
+      e.target.disabled = false;
+      e.target.value = "";
+      return;
+    }
+    showQrPreview(publicUrl);
+    msg.textContent = "Live on the Meetings page.";
+    msg.className = "form-msg ok";
+    e.target.disabled = false;
+    e.target.value = "";
+  });
+
+  document.getElementById("saveLinkBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("adminMsg");
+    const rawUrl = document.getElementById("linkInput").value.trim();
+    const url = rawUrl ? safeHttpsUrl(rawUrl) : null;
+    if (rawUrl && !url) { msg.textContent = "Enter a valid https:// attendance link."; msg.className = "form-msg err"; return; }
+    const { error: saveLinkErr } = await sb.from("current_meeting_access").upsert({
+      id: 1,
+      kind: url ? "link" : null,
+      value: url || null,
+      updated_at: new Date().toISOString()
+    });
+    if (saveLinkErr) {
+      console.error("Meeting link save failed:", saveLinkErr);
+      msg.textContent = `Save failed: ${saveLinkErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    msg.textContent = url ? "Live on the Meetings page." : "Attendance link cleared.";
+    msg.className = "form-msg ok";
+  });
+
+  document.getElementById("clearQrBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("adminMsg");
+    const { error: clearQrErr } = await sb.from("current_meeting_access").upsert({
+      id: 1,
+      kind: null,
+      value: null,
+      updated_at: new Date().toISOString()
+    });
+    if (clearQrErr) {
+      console.error("QR reset failed:", clearQrErr);
+      msg.textContent = `Clear failed: ${clearQrErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    document.getElementById("qrUpload").value = "";
+    showQrPreview(null);
+    msg.textContent = "Attendance QR cleared.";
+    msg.className = "form-msg ok";
+  });
+
+  function normalizeGoogleSlidesUrl(rawUrl) {
+    try {
+      const url = new URL(rawUrl);
+      if (url.protocol !== "https:" || url.hostname !== "docs.google.com" || !url.pathname.startsWith("/presentation/")) {
+        return null;
+      }
+      // Published Slides links can end in /pub or /pubembed. Iframes need /embed.
+      url.pathname = url.pathname.replace(/\/(?:pub|pubembed)$/, "/embed");
+      return url.toString();
+    } catch {
+      return null;
+    }
+  }
+
+  document.getElementById("saveSlidesBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("slidesMsg");
+    const rawUrl = document.getElementById("slidesInput").value.trim();
+    const url = rawUrl ? normalizeGoogleSlidesUrl(rawUrl) : "";
+    if (rawUrl && !url) {
+      msg.textContent = "Paste a valid Google Slides URL from docs.google.com/presentation/.";
+      msg.className = "form-msg err";
+      return;
+    }
+    const { error: slidesErr } = await sb.from("current_slides").upsert({ id: 1, embed_url: url, updated_at: new Date().toISOString() });
+    if (slidesErr) {
+      console.error("Slides save failed:", slidesErr);
+      msg.textContent = `Save failed: ${slidesErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    document.getElementById("slidesInput").value = url;
+    msg.textContent = url ? "Live on the Meetings page. The link was converted to embed format automatically." : "Meeting slides cleared.";
+    msg.className = "form-msg ok";
+  });
+
+  function makeAnnouncementRow(item = {}) {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row announcement-row";
+    const fields = [
+      ["Label", "announcement-tag", item.tag || "", "Event", "input"],
+      ["Title", "announcement-title", item.title || "", "Announcement title", "input"],
+      ["Description", "announcement-description", item.description || "", "Short details", "textarea"]
+    ];
+    fields.forEach(([labelText, className, value, placeholder, type]) => {
+      const label = document.createElement("label");
+      label.append(labelText);
+      const field = document.createElement(type);
+      field.className = className;
+      field.value = value;
+      field.placeholder = placeholder;
+      field.maxLength = type === "textarea" ? 400 : (className === "announcement-title" ? 140 : 40);
+      label.appendChild(field);
+      row.appendChild(label);
+    });
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.appendChild(remove);
+    return row;
+  }
+
+  function makeBoardRow(member = {}) {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row board-row";
+    [["Role", "board-role", member.role || "", "President"], ["Name", "board-name", member.name || "", "Student name"]].forEach(([labelText, className, value, placeholder]) => {
+      const label = document.createElement("label");
+      label.append(labelText);
+      const input = document.createElement("input");
+      input.className = className;
+      input.value = value;
+      input.placeholder = placeholder;
+      input.maxLength = 100;
+      label.appendChild(input);
+      row.appendChild(label);
+    });
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.appendChild(remove);
+    return row;
+  }
+
+  function renderSiteContentEditors(data) {
+    const announcements = document.getElementById("announcementEditor");
+    announcements.replaceChildren();
+    (Array.isArray(data.announcements) ? data.announcements : []).forEach((item) => announcements.appendChild(makeAnnouncementRow(item)));
+    if (!announcements.children.length) announcements.appendChild(makeAnnouncementRow());
+
+    const poster = data.poster && typeof data.poster === "object" ? data.poster : {};
+    document.getElementById("posterMonthInput").value = poster.month || "";
+    document.getElementById("posterThemeInput").value = poster.theme || "";
+    document.getElementById("posterDescriptionInput").value = poster.description || "";
+    document.getElementById("posterDueInput").value = poster.due || "";
+    document.getElementById("pointsTrackerInput").value = data.points_tracker_url || "";
+    document.getElementById("boardYearInput").value = data.board_year || "";
+
+    const board = document.getElementById("boardEditor");
+    board.replaceChildren();
+    (Array.isArray(data.board_members) ? data.board_members : []).forEach((member) => board.appendChild(makeBoardRow(member)));
+  }
+
+  async function loadSiteContent() {
+    const msg = document.getElementById("siteContentMsg");
+    msg.textContent = "Loading current site content…";
+    msg.className = "form-msg";
+    const { data, error: contentErr } = await sb.from("site_content").select("*").eq("id", 1).maybeSingle();
+    if (contentErr || !data) {
+      console.error("Could not load site content:", contentErr);
+      msg.textContent = `Could not load site content: ${contentErr?.message || "No content row found"}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    renderSiteContentEditors(data);
+    msg.textContent = "";
+  }
+
+  document.getElementById("addAnnouncementBtn").addEventListener("click", () => {
+    const list = document.getElementById("announcementEditor");
+    if (list.children.length >= 8) {
+      const msg = document.getElementById("siteContentMsg");
+      msg.textContent = "The carousel supports up to 8 announcements.";
+      msg.className = "form-msg err";
+      return;
+    }
+    list.appendChild(makeAnnouncementRow());
+  });
+  document.getElementById("addBoardMemberBtn").addEventListener("click", () => {
+    document.getElementById("boardEditor").appendChild(makeBoardRow());
+  });
+  document.querySelectorAll(".repeat-editor-list").forEach((list) => {
+    list.addEventListener("click", (event) => {
+      const remove = event.target.closest(".remove-editor-row");
+      if (remove) remove.closest(".repeat-editor-row").remove();
+    });
+  });
+
+  document.getElementById("saveSiteContentBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("siteContentMsg");
+    const announcements = [...document.querySelectorAll(".announcement-row")].map((row) => ({
+      tag: row.querySelector(".announcement-tag").value.trim(),
+      title: row.querySelector(".announcement-title").value.trim(),
+      description: row.querySelector(".announcement-description").value.trim()
+    })).filter((item) => item.title || item.description);
+    if (!announcements.length || announcements.some((item) => !item.title || !item.description)) {
+      msg.textContent = "Keep at least one announcement, and give each announcement a title and description.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const rawPointsUrl = document.getElementById("pointsTrackerInput").value.trim();
+    const pointsUrl = safeHttpsUrl(rawPointsUrl);
+    if (!pointsUrl) {
+      msg.textContent = "Enter a valid https:// link for the points tracker.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const boardMembers = [...document.querySelectorAll(".board-row")].map((row) => ({
+      role: row.querySelector(".board-role").value.trim(),
+      name: row.querySelector(".board-name").value.trim()
+    })).filter((member) => member.role || member.name);
+    if (boardMembers.some((member) => !member.role || !member.name)) {
+      msg.textContent = "Each board member needs both a role and a name.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const poster = {
+      month: document.getElementById("posterMonthInput").value.trim(),
+      theme: document.getElementById("posterThemeInput").value.trim(),
+      description: document.getElementById("posterDescriptionInput").value.trim(),
+      due: document.getElementById("posterDueInput").value.trim()
+    };
+    if (Object.values(poster).some((value) => !value)) {
+      msg.textContent = "Fill in all four monthly poster fields.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const boardYear = document.getElementById("boardYearInput").value.trim();
+    if (!boardYear) {
+      msg.textContent = "Enter the school year for the board section.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    msg.textContent = "Saving…";
+    msg.className = "form-msg";
+    const { error: saveContentErr } = await sb.from("site_content").upsert({
+      id: 1,
+      announcements,
+      poster,
+      points_tracker_url: pointsUrl,
+      board_year: boardYear,
+      board_members: boardMembers,
+      updated_at: new Date().toISOString()
+    });
+    if (saveContentErr) {
+      console.error("Site content save failed:", saveContentErr);
+      msg.textContent = `Save failed: ${saveContentErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    msg.textContent = "Saved. The public pages are updated.";
+    msg.className = "form-msg ok";
+  });
+
+
+  let tutoringFilter = "pending";
+
+  function escHtml(value) {
+    return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+
+  function toChicagoInput(value) {
+    if (!value) return "";
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    }).formatToParts(new Date(value)).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
+    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+  }
+
+  function chicagoDisplay(value) {
+    if (!value) return "Not provided";
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago", weekday: "short", month: "short", day: "numeric", year: "numeric",
+      hour: "numeric", minute: "2-digit"
+    }).format(new Date(value));
+  }
+
+  function requestedDateDisplay(value) {
+    if (!value) return "Not provided";
+    return new Intl.DateTimeFormat("en-US", {
+      weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
+    }).format(new Date(`${value}T12:00:00Z`));
+  }
+
+  function suggestedDateTime(row) {
+    if (row.confirmed_start) return toChicagoInput(row.confirmed_start);
+    if (row.requested_start) return toChicagoInput(row.requested_start);
+    return row.requested_date ? `${row.requested_date}T15:00` : "";
+  }
+
+  function chicagoLocalInputToIso(value) {
+    if (!value) return null;
+    // The site is intended for BVSW (Central Time). Convert the wall-clock value using Chicago's current offset.
+    const [datePart, timePart] = value.split("T");
+    const [y,m,d] = datePart.split("-").map(Number);
+    const [hh,mm] = timePart.split(":").map(Number);
+    const probe = new Date(Date.UTC(y, m - 1, d, hh, mm));
+    const formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+    });
+    const parts = formatter.formatToParts(probe).reduce((acc,p) => (acc[p.type]=p.value, acc), {});
+    const represented = Date.UTC(Number(parts.year), Number(parts.month)-1, Number(parts.day), Number(parts.hour), Number(parts.minute));
+    const offsetMs = represented - probe.getTime();
+    return new Date(Date.UTC(y, m - 1, d, hh, mm) - offsetMs).toISOString();
+  }
+
+  async function loadTutoringRequests() {
+    const list = document.getElementById("tutoringRequestsList");
+    const msg = document.getElementById("tutoringAdminMsg");
+    if (!list) return;
+    list.innerHTML = '<p class="note">Loading tutoring requests…</p>';
+    msg.textContent = "";
+
+    let query = sb.from("tutoring_requests")
+      .select("id,name,grade,math_class,email,requested_date,requested_start,requested_duration_minutes,topic,status,confirmed_start,confirmed_end,assigned_tutor,officer_notes,confirmation_sent_at,reminder_sent_at,created_at")
+      .order("created_at", { ascending: false });
+    if (tutoringFilter === "pending") query = query.eq("status", "pending");
+    if (tutoringFilter === "confirmed") query = query.eq("status", "confirmed");
+    const { data, error: reqErr } = await query;
+    if (reqErr) {
+      console.error("Could not load tutoring requests:", reqErr);
+      list.innerHTML = "";
+      msg.textContent = `Could not load requests: ${reqErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    if (!data?.length) {
+      list.innerHTML = `<p class="note">No ${tutoringFilter} tutoring requests right now.</p>`;
+      return;
+    }
+
+    list.innerHTML = data.map((row) => {
+      const duration = row.requested_duration_minutes || 30;
+      return `
+        <article class="portal-request-card" data-request-id="${row.id}">
+          <div class="portal-request-top">
+            <div>
+              <span class="portal-status ${escHtml(row.status)}">${escHtml(row.status)}</span>
+              <h3>${escHtml(row.name)}</h3>
+              <p>${escHtml(row.grade || "Grade not provided")} · ${escHtml(row.math_class || "Math class not provided")}</p>
+            </div>
+            <span class="portal-request-id">#${row.id}</span>
+          </div>
+          <div class="portal-request-details">
+            <p><strong>Email</strong><br>${escHtml(row.email || "Not provided")}</p>
+            <p><strong>Preferred date</strong><br>${escHtml(row.requested_date ? requestedDateDisplay(row.requested_date) : chicagoDisplay(row.requested_start))}</p>
+            <p><strong>Topic</strong><br>${escHtml(row.topic || "Not specified")}</p>
+          </div>
+          <div class="portal-request-fields">
+            <label>Final start time
+              <input type="datetime-local" class="confirm-start" value="${escHtml(suggestedDateTime(row))}">
+            </label>
+            <label>Duration
+              <select class="confirm-duration">
+                ${[30,45,60,90].map(n => `<option value="${n}" ${n === duration ? "selected" : ""}>${n} minutes</option>`).join("")}
+              </select>
+            </label>
+            <label>Tutor <span>(optional)</span>
+              <input type="text" class="confirm-tutor" value="${escHtml(row.assigned_tutor || "")}" placeholder="Tutor name">
+            </label>
+            <label>Officer notes <span>(private)</span>
+              <input type="text" class="confirm-notes" value="${escHtml(row.officer_notes || "")}" placeholder="Optional internal note">
+            </label>
+          </div>
+          <div class="portal-request-actions">
+            ${row.status === "pending" ? `<button class="btn btn-navy confirm-tutoring" type="button">Confirm session</button>` : `<button class="btn btn-navy update-tutoring" type="button">Save changes</button>`}
+            <button class="btn btn-outline cancel-tutoring" type="button">Cancel</button>
+          </div>
+          <p class="form-msg request-msg"></p>
+          ${row.confirmation_sent_at ? `<p class="portal-email-state">Confirmation email sent ${escHtml(chicagoDisplay(row.confirmation_sent_at))}</p>` : ""}
+        </article>`;
+    }).join("");
+  }
+
+  async function saveTutoringCard(card, shouldSendConfirmation) {
+    const requestId = Number(card.dataset.requestId);
+    const msg = card.querySelector(".request-msg");
+    const startValue = card.querySelector(".confirm-start").value;
+    const duration = Number(card.querySelector(".confirm-duration").value);
+    const assignedTutor = card.querySelector(".confirm-tutor").value.trim();
+    const officerNotes = card.querySelector(".confirm-notes").value.trim();
+    const startIso = chicagoLocalInputToIso(startValue);
+    if (!startIso || new Date(startIso) <= new Date()) {
+      msg.textContent = "Choose a final tutoring time in the future.";
+      msg.className = "form-msg err request-msg";
+      return;
+    }
+    const endIso = new Date(new Date(startIso).getTime() + duration * 60000).toISOString();
+    msg.textContent = "Saving…";
+    msg.className = "form-msg request-msg";
+
+    const { error: saveErr } = await sb.from("tutoring_requests").update({
+      status: "confirmed",
+      confirmed_start: startIso,
+      confirmed_end: endIso,
+      assigned_tutor: assignedTutor || null,
+      officer_notes: officerNotes || null
+    }).eq("id", requestId);
+
+    if (saveErr) {
+      console.error("Tutoring confirmation save failed:", saveErr);
+      msg.textContent = `Save failed: ${saveErr.message}`;
+      msg.className = "form-msg err request-msg";
+      return;
+    }
+
+    // The database trigger has already posted the privacy-safe public calendar item.
+    if (shouldSendConfirmation) {
+      const { error: fnErr } = await sb.functions.invoke("tutoring-confirm", { body: { request_id: requestId } });
+      if (fnErr) {
+        console.warn("Tutoring saved but confirmation email is not available yet:", fnErr);
+        msg.textContent = "Confirmed and posted to the calendar. Email is waiting on the Brevo sender/domain setup.";
+        msg.className = "form-msg ok request-msg";
+        setTimeout(loadTutoringRequests, 900);
+        return;
+      }
+    }
+    msg.textContent = "Saved. The public tutoring calendar is updated.";
+    msg.className = "form-msg ok request-msg";
+    setTimeout(loadTutoringRequests, 700);
+  }
+
+  document.getElementById("tutoringRequestsList").addEventListener("click", async (event) => {
+    const card = event.target.closest(".portal-request-card");
+    if (!card) return;
+    if (event.target.closest(".confirm-tutoring")) return saveTutoringCard(card, true);
+    if (event.target.closest(".update-tutoring")) return saveTutoringCard(card, false);
+    if (event.target.closest(".cancel-tutoring")) {
+      const requestId = Number(card.dataset.requestId);
+      const msg = card.querySelector(".request-msg");
+      msg.textContent = "Cancelling…";
+      msg.className = "form-msg request-msg";
+      const { error: cancelErr } = await sb.from("tutoring_requests").update({ status: "cancelled" }).eq("id", requestId);
+      if (cancelErr) {
+        msg.textContent = `Cancel failed: ${cancelErr.message}`;
+        msg.className = "form-msg err request-msg";
+        return;
+      }
+      msg.textContent = "Cancelled. It has been removed from the public calendar.";
+      msg.className = "form-msg ok request-msg";
+      setTimeout(loadTutoringRequests, 700);
+    }
+  });
+
+  document.getElementById("showPendingTutoring").addEventListener("click", () => {
+    tutoringFilter = "pending";
+    document.getElementById("showPendingTutoring").className = "btn btn-navy";
+    document.getElementById("showConfirmedTutoring").className = "btn btn-outline";
+    loadTutoringRequests();
+  });
+  document.getElementById("showConfirmedTutoring").addEventListener("click", () => {
+    tutoringFilter = "confirmed";
+    document.getElementById("showPendingTutoring").className = "btn btn-outline";
+    document.getElementById("showConfirmedTutoring").className = "btn btn-navy";
+    loadTutoringRequests();
+  });
+  document.getElementById("refreshTutoring").addEventListener("click", loadTutoringRequests);
+
+  let messageFilter = "new";
+
+  async function loadBoardMessages() {
+    const list = document.getElementById("boardMessagesList");
+    const msg = document.getElementById("boardMessagesMsg");
+    list.innerHTML = '<p class="note">Loading messages…</p>';
+    msg.textContent = "";
+    let query = sb.from("contact_messages")
+      .select("id,name,email,message,page_path,status,created_at,read_at")
+      .order("created_at", { ascending: false });
+    if (messageFilter === "new") query = query.eq("status", "new");
+    const { data, error: messagesErr } = await query;
+    if (messagesErr) {
+      console.error("Could not load board messages:", messagesErr);
+      list.innerHTML = "";
+      msg.textContent = `Could not load messages: ${messagesErr.message}`;
+      msg.className = "form-msg err";
+      return;
+    }
+    if (!data?.length) {
+      list.innerHTML = `<p class="note">No ${messageFilter === "new" ? "new " : ""}messages right now.</p>`;
+      return;
+    }
+    list.innerHTML = data.map((row) => `
+      <article class="portal-message-card" data-message-id="${row.id}">
+        <div class="portal-request-top">
+          <div>
+            <span class="portal-status ${escHtml(row.status)}">${escHtml(row.status)}</span>
+            <h3>${escHtml(row.name)}</h3>
+            <p><a href="mailto:${encodeURIComponent(row.email || "")}">${escHtml(row.email || "No email")}</a></p>
+          </div>
+          <span class="portal-request-id">${escHtml(chicagoDisplay(row.created_at))}</span>
+        </div>
+        <p class="portal-message-body">${escHtml(row.message)}</p>
+        <p class="portal-message-source">Sent from ${escHtml(row.page_path || "the website")}</p>
+        ${row.status === "new" ? '<button class="btn btn-outline mark-message-read" type="button">Mark as read</button>' : ""}
+        <p class="form-msg message-action-msg"></p>
+      </article>`).join("");
+  }
+
+  document.getElementById("boardMessagesList").addEventListener("click", async (event) => {
+    const button = event.target.closest(".mark-message-read");
+    const card = event.target.closest(".portal-message-card");
+    if (!button || !card) return;
+    const actionMsg = card.querySelector(".message-action-msg");
+    button.disabled = true;
+    const { error: updateErr } = await sb.from("contact_messages").update({
+      status: "read",
+      read_at: new Date().toISOString()
+    }).eq("id", Number(card.dataset.messageId));
+    if (updateErr) {
+      actionMsg.textContent = `Update failed: ${updateErr.message}`;
+      actionMsg.className = "form-msg err message-action-msg";
+      button.disabled = false;
+      return;
+    }
+    loadBoardMessages();
+  });
+
+  document.getElementById("showNewMessages").addEventListener("click", () => {
+    messageFilter = "new";
+    document.getElementById("showNewMessages").className = "btn btn-navy";
+    document.getElementById("showAllMessages").className = "btn btn-outline";
+    loadBoardMessages();
+  });
+  document.getElementById("showAllMessages").addEventListener("click", () => {
+    messageFilter = "all";
+    document.getElementById("showNewMessages").className = "btn btn-outline";
+    document.getElementById("showAllMessages").className = "btn btn-navy";
+    loadBoardMessages();
+  });
+  document.getElementById("refreshMessages").addEventListener("click", loadBoardMessages);
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await sb.auth.signOut();
+    adminView.style.display = "none";
+    gateView.style.display = "block";
+  });
+</script>
+</body>
+</html>
