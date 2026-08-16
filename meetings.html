@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meetings — BVSW Math NHS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <img class="brand-logo" src="assets/math-nhs-logo.png" alt="">
+      <span class="name">BVSW Math NHS</span>
+    </a>
+    <button class="nav-toggle">Menu</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="meetings.html">Meetings</a></li>
+      <li><a href="posters.html">Posters</a></li>
+      <li><a href="tutoring.html">Tutoring</a></li>
+      <li><a href="events.html">Events &amp; Points</a></li>
+      <li><a href="about.html">About Us</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero" style="padding-bottom:56px;">
+  <div class="wrap hero-inner" style="padding-bottom:0;">
+    <p class="eyebrow">General meetings</p>
+    <h1 style="font-size:clamp(2rem,4vw,2.8rem);">Meeting slides and attendance</h1>
+    <p class="lede">Slides from the most recent meeting are posted below. Meeting attendance is worth 0.5 points each.</p>
+  </div>
+</header>
+
+<div class="ruler"></div>
+
+<section class="bg-white">
+  <div class="wrap">
+    <div class="embed-frame">
+      <iframe id="slidesFrame" title="Current meeting slides" height="560" loading="lazy" allowfullscreen style="display:none;"></iframe>
+      <p id="slidesEmpty" style="color:var(--slate);margin:0;padding:32px;">No meeting slides posted yet.</p>
+    </div>
+
+    <div style="margin-top:40px;">
+      <p class="eyebrow">This meeting</p>
+      <h2>Attendance check-in</h2>
+      <div id="meetingAccess" class="card" style="max-width:340px;">
+        <p style="color:var(--slate);margin:0;">Loading&hellip;</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script>
+  (async () => {
+    const sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
+    const box = document.getElementById("meetingAccess");
+    const { data, error } = await sb.from("current_meeting_access").select("*").eq("id", 1).single();
+
+    function safeHttpsUrl(rawUrl) {
+      try {
+        const url = new URL(rawUrl);
+        return url.protocol === "https:" ? url.toString() : null;
+      } catch {
+        return null;
+      }
+    }
+
+    const accessUrl = safeHttpsUrl(data?.value);
+    box.replaceChildren();
+
+    if (error || !data || !accessUrl) {
+      box.innerHTML = '<p style="color:var(--slate);margin:0;">Nothing posted for this meeting yet.</p>';
+    } else if (data.kind === "link") {
+      const link = document.createElement("a");
+      link.className = "btn btn-navy";
+      link.href = accessUrl;
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.textContent = "Open attendance link →";
+      box.appendChild(link);
+    } else {
+      const image = document.createElement("img");
+      image.src = accessUrl;
+      image.alt = "Meeting attendance QR code";
+      image.style.cssText = "width:100%;border-radius:4px;";
+      box.appendChild(image);
+    }
+
+    const { data: slides } = await sb.from("current_slides").select("*").eq("id", 1).single();
+    if (slides && slides.embed_url) {
+      const frame = document.getElementById("slidesFrame");
+      frame.src = slides.embed_url;
+      frame.style.display = "block";
+      document.getElementById("slidesEmpty").style.display = "none";
+    }
+  })();
+</script>
+
+<footer id="contact">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <p class="eyebrow" style="color:var(--gold);">Contact</p>
+        <h3>Get in touch</h3>
+        <p>Questions about points, tutoring, or anything else &mdash; reach out below.</p>
+      </div>
+      <form>
+        <input type="text" placeholder="Name">
+        <input type="email" placeholder="Email">
+        <textarea placeholder="Message"></textarea>
+        <button type="submit" class="btn btn-gold" style="justify-self:start;">Send</button>
+      </form>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; BVSW Math NHS</span>
+      <a class="qr-link" href="portal-4q7z.html">&middot;</a>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
