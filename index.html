@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BVSW Math NHS</title>
-<meta name="description" content="Blue Valley Southwest Math National Honor Society — meetings, tutoring, points opportunities, and more.">
+<meta name="description" content="Blue Valley Southwest Math National Honor Society — meetings, events, points opportunities, and more.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
@@ -22,9 +22,9 @@
       <li><a href="index.html">Home</a></li>
       <li><a href="meetings.html">Meetings</a></li>
       <li><a href="posters.html">Posters</a></li>
-      <li><a href="tutoring.html">Tutoring</a></li>
       <li><a href="events.html">Events &amp; Points</a></li>
       <li><a href="about.html">About Us</a></li>
+      <li class="nav-feature" data-upcoming-nav hidden><a href="upcoming-events.html"><span data-upcoming-label>Upcoming Events</span></a></li>
     </ul>
   </div>
 </nav>
@@ -35,7 +35,7 @@
       <p class="eyebrow">Blue Valley Southwest</p>
       <h1 class="wordmark">BVSW Math NHS!</h1>
       <div class="hero-cta">
-        <a class="btn btn-gold" href="events.html">What's happening</a>
+        <a class="btn btn-gold" data-upcoming-home href="upcoming-events.html" hidden><span data-upcoming-label>Upcoming Events</span> &rarr;</a>
         <a class="btn btn-ghost" href="meetings.html">Meeting slides and attendance</a>
       </div>
     </div>
@@ -45,7 +45,7 @@
   </div>
 
   <div class="slider wrap" style="padding-bottom:64px;">
-    <p class="eyebrow" style="justify-content:center;">Upcoming</p>
+    <p class="eyebrow" style="justify-content:center;">Club updates</p>
     <div class="slider-track" id="upcomingSlider">
       <div class="slide active">
         <span class="tag">Event</span>
@@ -60,15 +60,7 @@
           <h3>Posters due the 30th</h3>
           <p>One math-themed poster per month, 8.5×11", submitted as a .jpg. Worth 1 point each.</p>
         </div>
-      </div>
-      <div class="slide">
-        <span class="tag">Goal</span>
-        <div class="body">
-          <h3>Growing our tutoring program</h3>
-          <p>Request one-on-one help with current math homework and concepts on Tuesdays or Thursdays.</p>
-        </div>
-      </div>
-      <div class="slide">
+      </div><div class="slide">
         <span class="tag">Meetings</span>
         <div class="body">
           <h3>Monthly club meetings</h3>
@@ -87,7 +79,7 @@
     <div class="section-head">
       <p class="eyebrow">Membership</p>
       <h2>How points work</h2>
-      <p>25 points gets you inducted, earned however you like &mdash; tutoring, events, posters, meetings. Full breakdown is on the Events &amp; Points page.</p>
+      <p>25 points gets you inducted, earned however you like &mdash; events, posters, meetings, and member activities. Full breakdown is on the Events &amp; Points page.</p>
     </div>
     <div class="grid grid-3">
       <div class="card">
@@ -171,7 +163,7 @@
       <div>
         <p class="eyebrow" style="color:var(--gold);">Contact</p>
         <h3>Get in touch</h3>
-        <p>Questions about points, tutoring, or anything else &mdash; reach out below.</p>
+        <p>Questions about points, events, or anything else &mdash; reach out below.</p>
       </div>
       <form>
         <input type="text" placeholder="Name">
