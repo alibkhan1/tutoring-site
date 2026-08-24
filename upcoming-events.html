@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upcoming Event — BVSW Math NHS</title>
+<meta name="description" content="Details for the next BVSW Math NHS event.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body data-upcoming-event-page>
+
+<nav class="site-nav">
+  <div class="wrap">
+    <a class="brand" href="index.html">
+      <img class="brand-logo" src="assets/math-nhs-logo.png" alt="">
+      <span class="name">BVSW Math NHS</span>
+    </a>
+    <button class="nav-toggle">Menu</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="meetings.html">Meetings</a></li>
+      <li><a href="posters.html">Posters</a></li>
+      <li><a href="events.html">Events &amp; Points</a></li>
+      <li><a href="about.html">About Us</a></li>
+      <li class="nav-feature" data-upcoming-nav hidden><a href="upcoming-events.html"><span data-upcoming-label>Upcoming Events</span></a></li>
+    </ul>
+  </div>
+</nav>
+
+<header class="hero upcoming-hero">
+  <div class="wrap upcoming-hero-grid">
+    <div class="upcoming-hero-copy">
+      <span class="event-status" data-event-status>Coming soon</span>
+      <p class="eyebrow" data-event-kicker>Featured event</p>
+      <h1 data-event-title>Upcoming event</h1>
+      <p class="lede" data-event-summary></p>
+      <div class="event-meta-grid" aria-label="Event details">
+        <div class="event-meta" data-event-meta><span>Date</span><strong data-event-date></strong></div>
+        <div class="event-meta" data-event-meta><span>Time</span><strong data-event-time></strong></div>
+        <div class="event-meta" data-event-meta><span>Location</span><strong data-event-location></strong></div>
+        <div class="event-meta" data-event-meta><span>Points</span><strong data-event-points></strong></div>
+      </div>
+      <a class="btn btn-gold" data-event-signup hidden>Sign up</a>
+    </div>
+    <div class="upcoming-hero-media" data-event-hero-wrap hidden>
+      <img data-event-hero-image alt="">
+    </div>
+  </div>
+</header>
+
+<div class="ruler"></div>
+
+<section class="bg-white upcoming-overview" data-upcoming-section="overview">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">What to know</p>
+      <h2>The event at a glance</h2>
+      <p data-event-details></p>
+    </div>
+    <div class="event-contact-note" data-event-contact></div>
+  </div>
+</section>
+
+<section class="bg-pale" data-upcoming-section="requirements">
+  <div class="wrap upcoming-requirement-grid">
+    <div>
+      <p class="eyebrow">Before you go</p>
+      <h2>Requirements</h2>
+      <ul class="event-requirements" data-event-requirements></ul>
+    </div>
+    <div class="event-poster" data-event-poster-wrap data-upcoming-section="poster" hidden>
+      <img data-event-poster-image alt="">
+    </div>
+  </div>
+</section>
+
+<section class="bg-white" data-upcoming-section="schedule">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Plan your time</p>
+      <h2>Event schedule</h2>
+    </div>
+    <div class="event-schedule" data-event-schedule></div>
+  </div>
+</section>
+
+<footer id="contact">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <p class="eyebrow" style="color:var(--gold);">Contact</p>
+        <h3>Get in touch</h3>
+        <p>Questions about points, events, or anything else &mdash; reach out below.</p>
+      </div>
+      <form>
+        <input type="text" placeholder="Name">
+        <input type="email" placeholder="Email">
+        <textarea placeholder="Message"></textarea>
+        <button type="submit" class="btn btn-gold" style="justify-self:start;">Send</button>
+      </form>
+    </div>
+    <div class="footer-bottom">
+      <span>&copy; BVSW Math NHS</span>
+      <a class="qr-link" href="portal-4q7z.html">&middot;</a>
+    </div>
+  </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/supabase-config.js"></script>
+<script src="assets/site-content.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
