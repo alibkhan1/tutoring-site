@@ -11,7 +11,7 @@
 <style>
   .portal-mode-button { background:transparent; color:var(--navy); border-color:var(--line); }
   .portal-mode-button.active { background:var(--navy); color:white; border-color:var(--navy); }
-  .portal-tabs { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0 0 28px; }
+  .portal-tabs { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:0 0 28px; }
   .portal-tabs .btn { justify-content:center; }
   .portal-tab-panel[hidden] { display:none; }
   .content-editor { text-align:left; }
@@ -26,8 +26,17 @@
   .repeat-editor-list { display:grid; gap:12px; margin:14px 0; }
   .repeat-editor-row { display:grid; grid-template-columns:140px 1fr 2fr auto; gap:10px; align-items:end; padding:14px; background:var(--pale); border-radius:var(--radius); }
   .repeat-editor-row.board-row { grid-template-columns:1fr 1.4fr auto; }
+  .repeat-editor-row.event-requirement-row { grid-template-columns:1fr auto; }
+  .repeat-editor-row.event-schedule-row-editor { grid-template-columns:1fr 2fr auto; }
+  .portal-switches { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; }
+  .portal-switch { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--pale); text-align:left; }
+  .portal-switch input { width:18px; height:18px; margin-top:1px; accent-color:var(--navy); }
+  .portal-switch strong { display:block; margin-bottom:2px; }
+  .portal-switch span { color:var(--slate); font-size:.82rem; }
+  .event-upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .event-upload-row input[type="file"] { max-width:100%; }
   @media (max-width:760px) {
-    .portal-tabs, .content-fields, .repeat-editor-row, .repeat-editor-row.board-row { grid-template-columns:1fr; }
+    .portal-tabs, .content-fields, .repeat-editor-row, .repeat-editor-row.board-row, .repeat-editor-row.event-requirement-row, .repeat-editor-row.event-schedule-row-editor, .portal-switches { grid-template-columns:1fr; }
     .field-wide { grid-column:auto; }
   }
 </style>
@@ -66,8 +75,9 @@
 <div id="adminView" class="qr-admin" style="display:none;">
   <div class="portal-tabs" role="tablist" aria-label="Officer portal sections">
     <button class="btn btn-navy portal-main-tab" type="button" role="tab" aria-selected="true" data-portal-tab="meetings">Meetings</button>
-    <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="work">Requests &amp; inbox</button>
+    <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="work">Board inbox</button>
     <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="content">Site content</button>
+    <button class="btn btn-outline portal-main-tab" type="button" role="tab" aria-selected="false" data-portal-tab="upcoming">Upcoming event</button>
   </div>
 
   <div class="portal-tab-panel" id="portalPanelMeetings" role="tabpanel">
@@ -108,25 +118,7 @@
   </div>
 
   <div class="portal-tab-panel" id="portalPanelWork" role="tabpanel" hidden>
-
-  <hr style="border:none;border-top:1px solid var(--line);margin:32px 0;">
-
-  <section class="portal-tutoring" aria-labelledby="tutoringAdminTitle">
-    <p class="eyebrow" style="justify-content:center;">Tutoring requests</p>
-    <h2 id="tutoringAdminTitle">Review &amp; confirm tutoring</h2>
-    <p class="note" style="text-align:left;">Students choose a Tuesday or Thursday. Set the final time here, then confirm the request to post a privacy-safe session to the public tutoring calendar. Once email delivery is connected, the student also receives a calendar event with a 5:00 PM reminder the day before.</p>
-    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:14px 0 20px;">
-      <button class="btn btn-navy" type="button" id="showPendingTutoring">Pending</button>
-      <button class="btn btn-outline" type="button" id="showConfirmedTutoring">Confirmed</button>
-      <button class="btn btn-outline" type="button" id="refreshTutoring">Refresh</button>
-    </div>
-    <p class="form-msg" id="tutoringAdminMsg"></p>
-    <div id="tutoringRequestsList" class="portal-request-list"></div>
-  </section>
-
-  <hr style="border:none;border-top:1px solid var(--line);margin:32px 0;">
-
-  <section class="portal-messages" aria-labelledby="boardMessagesTitle">
+<section class="portal-messages" aria-labelledby="boardMessagesTitle">
     <p class="eyebrow" style="justify-content:center;">Board inbox</p>
     <h2 id="boardMessagesTitle">Website messages</h2>
     <p class="note" style="text-align:left;">Messages submitted through the contact form appear here for officers only.</p>
@@ -182,6 +174,78 @@
 
     <button class="btn btn-navy" type="button" id="saveSiteContentBtn" style="margin-top:20px;">Save site content</button>
     <p class="form-msg" id="siteContentMsg" role="status"></p>
+  </div>
+
+  <div class="portal-tab-panel content-editor" id="portalPanelUpcoming" role="tabpanel" hidden>
+    <p class="eyebrow" style="justify-content:center;">Featured event editor</p>
+    <h2>Upcoming event</h2>
+    <p class="note">Everything here updates instantly. Turn the master switch off to remove the navigation tab, homepage link, and event page together.</p>
+
+    <div class="content-editor-block">
+      <h3>Visibility</h3>
+      <label class="portal-switch">
+        <input id="eventVisibleInput" type="checkbox">
+        <span><strong>Show upcoming event</strong>Display the highlighted tab, homepage link, and public event page.</span>
+      </label>
+      <div class="portal-switches">
+        <label class="portal-switch"><input id="eventOverviewVisibleInput" type="checkbox"><span><strong>Overview</strong>Show the event description and contact note.</span></label>
+        <label class="portal-switch"><input id="eventRequirementsVisibleInput" type="checkbox"><span><strong>Requirements</strong>Show the member checklist.</span></label>
+        <label class="portal-switch"><input id="eventPosterVisibleInput" type="checkbox"><span><strong>Poster</strong>Show the optional event poster.</span></label>
+        <label class="portal-switch"><input id="eventScheduleVisibleInput" type="checkbox"><span><strong>Schedule</strong>Show the event-day timeline.</span></label>
+      </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Headline and links</h3>
+      <div class="content-fields">
+        <label>Top navigation label<input id="eventNavLabelInput" type="text" maxlength="40" placeholder="Upcoming Events"></label>
+        <label>Status badge<input id="eventStatusInput" type="text" maxlength="50" placeholder="Sign-ups open"></label>
+        <label>Small heading<input id="eventKickerInput" type="text" maxlength="60" placeholder="Featured event"></label>
+        <label>Event title<input id="eventTitleInput" type="text" maxlength="120" placeholder="STEM Fair"></label>
+        <label class="field-wide">Short introduction<textarea id="eventSummaryInput" maxlength="500" placeholder="The most important information members should see first."></textarea></label>
+        <label>Sign-up button text<input id="eventSignupLabelInput" type="text" maxlength="50" placeholder="Sign up"></label>
+        <label>Sign-up URL<input id="eventSignupUrlInput" type="url" placeholder="https://..."></label>
+      </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Quick details</h3>
+      <div class="content-fields">
+        <label>Date<input id="eventDateInput" type="text" maxlength="100" placeholder="September 26, 2026"></label>
+        <label>Time<input id="eventTimeInput" type="text" maxlength="100" placeholder="5:30–8:00 PM"></label>
+        <label>Location<input id="eventLocationInput" type="text" maxlength="140" placeholder="BVSW Commons"></label>
+        <label>Points<input id="eventPointsInput" type="text" maxlength="80" placeholder="8 points"></label>
+        <label class="field-wide">Full details<textarea id="eventDetailsInput" maxlength="1200" placeholder="What members need to know about the event."></textarea></label>
+        <label class="field-wide">Contact note<input id="eventContactInput" type="text" maxlength="240" placeholder="Questions? Reach out to a Math NHS officer."></label>
+      </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Photos</h3>
+      <p class="note">Upload a new image or paste an existing HTTPS URL. Clear a field to remove the image without leaving a caption or empty box.</p>
+      <div class="content-fields">
+        <label class="field-wide">Feature photo URL<input id="eventHeroUrlInput" type="text" placeholder="https://... or assets/events/..."></label>
+        <div class="field-wide event-upload-row"><input id="eventHeroUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><button class="btn btn-outline" id="clearEventHeroBtn" type="button">Remove feature photo</button></div>
+        <label class="field-wide">Poster image URL<input id="eventPosterUrlInput" type="text" placeholder="https://... or assets/events/..."></label>
+        <div class="field-wide event-upload-row"><input id="eventPosterUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif"><button class="btn btn-outline" id="clearEventPosterBtn" type="button">Remove poster</button></div>
+      </div>
+      <p class="form-msg" id="eventUploadMsg" role="status"></p>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Requirements</h3>
+      <div class="repeat-editor-list" id="eventRequirementsEditor"></div>
+      <button class="btn btn-outline" type="button" id="addEventRequirementBtn">Add requirement</button>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Schedule</h3>
+      <div class="repeat-editor-list" id="eventScheduleEditor"></div>
+      <button class="btn btn-outline" type="button" id="addEventScheduleBtn">Add schedule item</button>
+    </div>
+
+    <button class="btn btn-navy" type="button" id="saveUpcomingEventBtn" style="margin-top:20px;">Save upcoming event</button>
+    <p class="form-msg" id="upcomingEventMsg" role="status"></p>
   </div>
 
   <button class="btn btn-ghost" id="logoutBtn" style="margin-top:28px;background:var(--navy);color:white;">Sign out</button>
@@ -245,7 +309,7 @@
     gateView.style.display = "none";
     adminView.style.display = "block";
     loadCurrent();
-    loadTutoringRequests();
+    loadUpcomingEvent();
     loadBoardMessages();
     loadSiteContent();
   }
@@ -280,7 +344,8 @@
     const panels = {
       meetings: document.getElementById("portalPanelMeetings"),
       work: document.getElementById("portalPanelWork"),
-      content: document.getElementById("portalPanelContent")
+      content: document.getElementById("portalPanelContent"),
+      upcoming: document.getElementById("portalPanelUpcoming")
     };
     Object.entries(panels).forEach(([key, panel]) => { panel.hidden = key !== name; });
     document.querySelectorAll(".portal-main-tab").forEach((button) => {
@@ -673,19 +738,8 @@
   });
 
 
-  let tutoringFilter = "pending";
-
   function escHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  }
-
-  function toChicagoInput(value) {
-    if (!value) return "";
-    const parts = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
-    }).formatToParts(new Date(value)).reduce((acc, p) => (acc[p.type] = p.value, acc), {});
-    return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
   }
 
   function chicagoDisplay(value) {
@@ -696,187 +750,266 @@
     }).format(new Date(value));
   }
 
-  function requestedDateDisplay(value) {
-    if (!value) return "Not provided";
-    return new Intl.DateTimeFormat("en-US", {
-      weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
-    }).format(new Date(`${value}T12:00:00Z`));
+  const UPCOMING_DEFAULTS = {
+    visible: false,
+    nav_label: "Upcoming Events",
+    status: "Coming soon",
+    kicker: "Featured event",
+    title: "",
+    summary: "",
+    date: "",
+    time: "",
+    location: "",
+    points: "",
+    signup_label: "Sign up",
+    signup_url: "",
+    hero_url: "",
+    poster_url: "",
+    details: "",
+    contact: "",
+    requirements: [],
+    schedule: [],
+    sections: { overview: true, requirements: true, poster: false, schedule: false }
+  };
+
+  let currentUpcomingEvent = { ...UPCOMING_DEFAULTS };
+
+  function safeEventAssetUrl(rawUrl) {
+    const value = String(rawUrl || "").trim();
+    if (!value) return "";
+    if (/^assets\/[a-zA-Z0-9/_\-.]+$/.test(value)) return value;
+    return safeHttpsUrl(value);
   }
 
-  function suggestedDateTime(row) {
-    if (row.confirmed_start) return toChicagoInput(row.confirmed_start);
-    if (row.requested_start) return toChicagoInput(row.requested_start);
-    return row.requested_date ? `${row.requested_date}T15:00` : "";
+  function makeRequirementRow(value = "") {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row event-requirement-row";
+    const label = document.createElement("label");
+    label.append("Requirement");
+    const input = document.createElement("input");
+    input.className = "event-requirement-input";
+    input.value = value;
+    input.maxLength = 240;
+    input.placeholder = "What members need to do";
+    label.appendChild(input);
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.append(label, remove);
+    return row;
   }
 
-  function chicagoLocalInputToIso(value) {
-    if (!value) return null;
-    // The site is intended for BVSW (Central Time). Convert the wall-clock value using Chicago's current offset.
-    const [datePart, timePart] = value.split("T");
-    const [y,m,d] = datePart.split("-").map(Number);
-    const [hh,mm] = timePart.split(":").map(Number);
-    const probe = new Date(Date.UTC(y, m - 1, d, hh, mm));
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit",
-      hour: "2-digit", minute: "2-digit", hourCycle: "h23"
+  function makeScheduleRow(item = {}) {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row event-schedule-row-editor";
+    [["Time", "event-schedule-time-input", item.time || "", "5:15 PM"], ["Item", "event-schedule-label-input", item.label || "", "Volunteer check-in"]].forEach(([text, className, value, placeholder]) => {
+      const label = document.createElement("label");
+      label.append(text);
+      const input = document.createElement("input");
+      input.className = className;
+      input.value = value;
+      input.maxLength = 180;
+      input.placeholder = placeholder;
+      label.appendChild(input);
+      row.appendChild(label);
     });
-    const parts = formatter.formatToParts(probe).reduce((acc,p) => (acc[p.type]=p.value, acc), {});
-    const represented = Date.UTC(Number(parts.year), Number(parts.month)-1, Number(parts.day), Number(parts.hour), Number(parts.minute));
-    const offsetMs = represented - probe.getTime();
-    return new Date(Date.UTC(y, m - 1, d, hh, mm) - offsetMs).toISOString();
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.appendChild(remove);
+    return row;
   }
 
-  async function loadTutoringRequests() {
-    const list = document.getElementById("tutoringRequestsList");
-    const msg = document.getElementById("tutoringAdminMsg");
-    if (!list) return;
-    list.innerHTML = '<p class="note">Loading tutoring requests…</p>';
-    msg.textContent = "";
+  function renderUpcomingEditor(raw) {
+    const value = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+    currentUpcomingEvent = {
+      ...UPCOMING_DEFAULTS,
+      ...value,
+      sections: { ...UPCOMING_DEFAULTS.sections, ...(value.sections && typeof value.sections === "object" ? value.sections : {}) },
+      requirements: Array.isArray(value.requirements) ? value.requirements : [],
+      schedule: Array.isArray(value.schedule) ? value.schedule : []
+    };
+    const fields = {
+      eventNavLabelInput: currentUpcomingEvent.nav_label,
+      eventStatusInput: currentUpcomingEvent.status,
+      eventKickerInput: currentUpcomingEvent.kicker,
+      eventTitleInput: currentUpcomingEvent.title,
+      eventSummaryInput: currentUpcomingEvent.summary,
+      eventDateInput: currentUpcomingEvent.date,
+      eventTimeInput: currentUpcomingEvent.time,
+      eventLocationInput: currentUpcomingEvent.location,
+      eventPointsInput: currentUpcomingEvent.points,
+      eventSignupLabelInput: currentUpcomingEvent.signup_label,
+      eventSignupUrlInput: currentUpcomingEvent.signup_url,
+      eventHeroUrlInput: currentUpcomingEvent.hero_url,
+      eventPosterUrlInput: currentUpcomingEvent.poster_url,
+      eventDetailsInput: currentUpcomingEvent.details,
+      eventContactInput: currentUpcomingEvent.contact
+    };
+    Object.entries(fields).forEach(([id, value]) => { document.getElementById(id).value = value || ""; });
+    document.getElementById("eventVisibleInput").checked = currentUpcomingEvent.visible === true;
+    document.getElementById("eventOverviewVisibleInput").checked = currentUpcomingEvent.sections.overview === true;
+    document.getElementById("eventRequirementsVisibleInput").checked = currentUpcomingEvent.sections.requirements === true;
+    document.getElementById("eventPosterVisibleInput").checked = currentUpcomingEvent.sections.poster === true;
+    document.getElementById("eventScheduleVisibleInput").checked = currentUpcomingEvent.sections.schedule === true;
 
-    let query = sb.from("tutoring_requests")
-      .select("id,name,grade,math_class,email,requested_date,requested_start,requested_duration_minutes,topic,status,confirmed_start,confirmed_end,assigned_tutor,officer_notes,confirmation_sent_at,reminder_sent_at,created_at")
-      .order("created_at", { ascending: false });
-    if (tutoringFilter === "pending") query = query.eq("status", "pending");
-    if (tutoringFilter === "confirmed") query = query.eq("status", "confirmed");
-    const { data, error: reqErr } = await query;
-    if (reqErr) {
-      console.error("Could not load tutoring requests:", reqErr);
-      list.innerHTML = "";
-      msg.textContent = `Could not load requests: ${reqErr.message}`;
+    const requirements = document.getElementById("eventRequirementsEditor");
+    requirements.replaceChildren();
+    currentUpcomingEvent.requirements.forEach((item) => requirements.appendChild(makeRequirementRow(String(item || ""))));
+
+    const schedule = document.getElementById("eventScheduleEditor");
+    schedule.replaceChildren();
+    currentUpcomingEvent.schedule.forEach((item) => schedule.appendChild(makeScheduleRow(item)));
+  }
+
+  async function loadUpcomingEvent() {
+    const msg = document.getElementById("upcomingEventMsg");
+    msg.textContent = "Loading current event…";
+    msg.className = "form-msg";
+    const { data, error: loadErr } = await sb.from("site_content").select("upcoming_event").eq("id", 1).maybeSingle();
+    if (loadErr || !data) {
+      console.error("Could not load upcoming event:", loadErr);
+      msg.textContent = `Could not load event: ${loadErr?.message || "No content row found"}`;
       msg.className = "form-msg err";
       return;
     }
-    if (!data?.length) {
-      list.innerHTML = `<p class="note">No ${tutoringFilter} tutoring requests right now.</p>`;
-      return;
-    }
-
-    list.innerHTML = data.map((row) => {
-      const duration = row.requested_duration_minutes || 30;
-      return `
-        <article class="portal-request-card" data-request-id="${row.id}">
-          <div class="portal-request-top">
-            <div>
-              <span class="portal-status ${escHtml(row.status)}">${escHtml(row.status)}</span>
-              <h3>${escHtml(row.name)}</h3>
-              <p>${escHtml(row.grade || "Grade not provided")} · ${escHtml(row.math_class || "Math class not provided")}</p>
-            </div>
-            <span class="portal-request-id">#${row.id}</span>
-          </div>
-          <div class="portal-request-details">
-            <p><strong>Email</strong><br>${escHtml(row.email || "Not provided")}</p>
-            <p><strong>Preferred date</strong><br>${escHtml(row.requested_date ? requestedDateDisplay(row.requested_date) : chicagoDisplay(row.requested_start))}</p>
-            <p><strong>Topic</strong><br>${escHtml(row.topic || "Not specified")}</p>
-          </div>
-          <div class="portal-request-fields">
-            <label>Final start time
-              <input type="datetime-local" class="confirm-start" value="${escHtml(suggestedDateTime(row))}">
-            </label>
-            <label>Duration
-              <select class="confirm-duration">
-                ${[30,45,60,90].map(n => `<option value="${n}" ${n === duration ? "selected" : ""}>${n} minutes</option>`).join("")}
-              </select>
-            </label>
-            <label>Tutor <span>(optional)</span>
-              <input type="text" class="confirm-tutor" value="${escHtml(row.assigned_tutor || "")}" placeholder="Tutor name">
-            </label>
-            <label>Officer notes <span>(private)</span>
-              <input type="text" class="confirm-notes" value="${escHtml(row.officer_notes || "")}" placeholder="Optional internal note">
-            </label>
-          </div>
-          <div class="portal-request-actions">
-            ${row.status === "pending" ? `<button class="btn btn-navy confirm-tutoring" type="button">Confirm session</button>` : `<button class="btn btn-navy update-tutoring" type="button">Save changes</button>`}
-            <button class="btn btn-outline cancel-tutoring" type="button">Cancel</button>
-          </div>
-          <p class="form-msg request-msg"></p>
-          ${row.confirmation_sent_at ? `<p class="portal-email-state">Confirmation email sent ${escHtml(chicagoDisplay(row.confirmation_sent_at))}</p>` : ""}
-        </article>`;
-    }).join("");
+    renderUpcomingEditor(data.upcoming_event);
+    msg.textContent = "";
   }
 
-  async function saveTutoringCard(card, shouldSendConfirmation) {
-    const requestId = Number(card.dataset.requestId);
-    const msg = card.querySelector(".request-msg");
-    const startValue = card.querySelector(".confirm-start").value;
-    const duration = Number(card.querySelector(".confirm-duration").value);
-    const assignedTutor = card.querySelector(".confirm-tutor").value.trim();
-    const officerNotes = card.querySelector(".confirm-notes").value.trim();
-    const startIso = chicagoLocalInputToIso(startValue);
-    if (!startIso || new Date(startIso) <= new Date()) {
-      msg.textContent = "Choose a final tutoring time in the future.";
-      msg.className = "form-msg err request-msg";
+  document.getElementById("addEventRequirementBtn").addEventListener("click", () => {
+    document.getElementById("eventRequirementsEditor").appendChild(makeRequirementRow());
+  });
+  document.getElementById("addEventScheduleBtn").addEventListener("click", () => {
+    document.getElementById("eventScheduleEditor").appendChild(makeScheduleRow());
+  });
+  document.getElementById("clearEventHeroBtn").addEventListener("click", () => {
+    document.getElementById("eventHeroUrlInput").value = "";
+    document.getElementById("eventHeroUpload").value = "";
+  });
+  document.getElementById("clearEventPosterBtn").addEventListener("click", () => {
+    document.getElementById("eventPosterUrlInput").value = "";
+    document.getElementById("eventPosterUpload").value = "";
+  });
+
+  async function uploadEventImage(fileInput, urlInput) {
+    const file = fileInput.files[0];
+    if (!file) return;
+    const msg = document.getElementById("eventUploadMsg");
+    const allowed = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/gif": "gif" };
+    const extension = allowed[file.type];
+    if (!extension || file.size > 5 * 1024 * 1024) {
+      msg.textContent = "Use a PNG, JPG, WebP, or GIF no larger than 5 MB.";
+      msg.className = "form-msg err";
+      fileInput.value = "";
       return;
     }
-    const endIso = new Date(new Date(startIso).getTime() + duration * 60000).toISOString();
+    fileInput.disabled = true;
+    msg.textContent = "Uploading image…";
+    msg.className = "form-msg";
+    const path = `upcoming/${Date.now()}-${crypto.randomUUID()}.${extension}`;
+    const { error: uploadErr } = await sb.storage.from("site-assets").upload(path, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: false
+    });
+    if (uploadErr) {
+      console.error("Event image upload failed:", uploadErr);
+      msg.textContent = `Upload failed: ${uploadErr.message}`;
+      msg.className = "form-msg err";
+      fileInput.disabled = false;
+      fileInput.value = "";
+      return;
+    }
+    const { data } = sb.storage.from("site-assets").getPublicUrl(path);
+    const url = safeHttpsUrl(data?.publicUrl);
+    if (!url) {
+      msg.textContent = "The image uploaded, but its public URL was invalid.";
+      msg.className = "form-msg err";
+    } else {
+      urlInput.value = url;
+      msg.textContent = "Image uploaded. Save the event to publish it.";
+      msg.className = "form-msg ok";
+    }
+    fileInput.disabled = false;
+    fileInput.value = "";
+  }
+
+  document.getElementById("eventHeroUpload").addEventListener("change", (event) => uploadEventImage(event.currentTarget, document.getElementById("eventHeroUrlInput")));
+  document.getElementById("eventPosterUpload").addEventListener("change", (event) => uploadEventImage(event.currentTarget, document.getElementById("eventPosterUrlInput")));
+
+  document.getElementById("saveUpcomingEventBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("upcomingEventMsg");
+    const signupRaw = document.getElementById("eventSignupUrlInput").value.trim();
+    const signupUrl = signupRaw ? safeHttpsUrl(signupRaw) : "";
+    if (signupRaw && !signupUrl) {
+      msg.textContent = "The sign-up link must start with https://.";
+      msg.className = "form-msg err";
+      return;
+    }
+    const heroRaw = document.getElementById("eventHeroUrlInput").value.trim();
+    const posterRaw = document.getElementById("eventPosterUrlInput").value.trim();
+    const heroUrl = safeEventAssetUrl(heroRaw);
+    const posterUrl = safeEventAssetUrl(posterRaw);
+    if ((heroRaw && !heroUrl) || (posterRaw && !posterUrl)) {
+      msg.textContent = "Image links must be HTTPS URLs or existing assets/events/ paths.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const upcomingEvent = {
+      visible: document.getElementById("eventVisibleInput").checked,
+      nav_label: document.getElementById("eventNavLabelInput").value.trim().slice(0, 40) || "Upcoming Events",
+      status: document.getElementById("eventStatusInput").value.trim(),
+      kicker: document.getElementById("eventKickerInput").value.trim(),
+      title: document.getElementById("eventTitleInput").value.trim(),
+      summary: document.getElementById("eventSummaryInput").value.trim(),
+      date: document.getElementById("eventDateInput").value.trim(),
+      time: document.getElementById("eventTimeInput").value.trim(),
+      location: document.getElementById("eventLocationInput").value.trim(),
+      points: document.getElementById("eventPointsInput").value.trim(),
+      signup_label: document.getElementById("eventSignupLabelInput").value.trim() || "Sign up",
+      signup_url: signupUrl,
+      hero_url: heroUrl,
+      poster_url: posterUrl,
+      details: document.getElementById("eventDetailsInput").value.trim(),
+      contact: document.getElementById("eventContactInput").value.trim(),
+      requirements: [...document.querySelectorAll(".event-requirement-input")].map((input) => input.value.trim()).filter(Boolean),
+      schedule: [...document.querySelectorAll(".event-schedule-row-editor")].map((row) => ({
+        time: row.querySelector(".event-schedule-time-input").value.trim(),
+        label: row.querySelector(".event-schedule-label-input").value.trim()
+      })).filter((item) => item.time || item.label),
+      sections: {
+        overview: document.getElementById("eventOverviewVisibleInput").checked,
+        requirements: document.getElementById("eventRequirementsVisibleInput").checked,
+        poster: document.getElementById("eventPosterVisibleInput").checked,
+        schedule: document.getElementById("eventScheduleVisibleInput").checked
+      }
+    };
+
+    if (upcomingEvent.visible && (!upcomingEvent.title || !upcomingEvent.summary)) {
+      msg.textContent = "A visible event needs a title and short introduction.";
+      msg.className = "form-msg err";
+      return;
+    }
     msg.textContent = "Saving…";
-    msg.className = "form-msg request-msg";
-
-    const { error: saveErr } = await sb.from("tutoring_requests").update({
-      status: "confirmed",
-      confirmed_start: startIso,
-      confirmed_end: endIso,
-      assigned_tutor: assignedTutor || null,
-      officer_notes: officerNotes || null
-    }).eq("id", requestId);
-
+    msg.className = "form-msg";
+    const { error: saveErr } = await sb.from("site_content").update({
+      upcoming_event: upcomingEvent,
+      updated_at: new Date().toISOString()
+    }).eq("id", 1);
     if (saveErr) {
-      console.error("Tutoring confirmation save failed:", saveErr);
+      console.error("Upcoming event save failed:", saveErr);
       msg.textContent = `Save failed: ${saveErr.message}`;
-      msg.className = "form-msg err request-msg";
+      msg.className = "form-msg err";
       return;
     }
-
-    // The database trigger has already posted the privacy-safe public calendar item.
-    if (shouldSendConfirmation) {
-      const { error: fnErr } = await sb.functions.invoke("tutoring-confirm", { body: { request_id: requestId } });
-      if (fnErr) {
-        console.warn("Tutoring saved but confirmation email is not available yet:", fnErr);
-        msg.textContent = "Confirmed and posted to the calendar. Email is waiting on the Brevo sender/domain setup.";
-        msg.className = "form-msg ok request-msg";
-        setTimeout(loadTutoringRequests, 900);
-        return;
-      }
-    }
-    msg.textContent = "Saved. The public tutoring calendar is updated.";
-    msg.className = "form-msg ok request-msg";
-    setTimeout(loadTutoringRequests, 700);
-  }
-
-  document.getElementById("tutoringRequestsList").addEventListener("click", async (event) => {
-    const card = event.target.closest(".portal-request-card");
-    if (!card) return;
-    if (event.target.closest(".confirm-tutoring")) return saveTutoringCard(card, true);
-    if (event.target.closest(".update-tutoring")) return saveTutoringCard(card, false);
-    if (event.target.closest(".cancel-tutoring")) {
-      const requestId = Number(card.dataset.requestId);
-      const msg = card.querySelector(".request-msg");
-      msg.textContent = "Cancelling…";
-      msg.className = "form-msg request-msg";
-      const { error: cancelErr } = await sb.from("tutoring_requests").update({ status: "cancelled" }).eq("id", requestId);
-      if (cancelErr) {
-        msg.textContent = `Cancel failed: ${cancelErr.message}`;
-        msg.className = "form-msg err request-msg";
-        return;
-      }
-      msg.textContent = "Cancelled. It has been removed from the public calendar.";
-      msg.className = "form-msg ok request-msg";
-      setTimeout(loadTutoringRequests, 700);
-    }
+    currentUpcomingEvent = upcomingEvent;
+    msg.textContent = upcomingEvent.visible ? "Saved. The upcoming event is live." : "Saved. The upcoming event is hidden everywhere.";
+    msg.className = "form-msg ok";
   });
-
-  document.getElementById("showPendingTutoring").addEventListener("click", () => {
-    tutoringFilter = "pending";
-    document.getElementById("showPendingTutoring").className = "btn btn-navy";
-    document.getElementById("showConfirmedTutoring").className = "btn btn-outline";
-    loadTutoringRequests();
-  });
-  document.getElementById("showConfirmedTutoring").addEventListener("click", () => {
-    tutoringFilter = "confirmed";
-    document.getElementById("showPendingTutoring").className = "btn btn-outline";
-    document.getElementById("showConfirmedTutoring").className = "btn btn-navy";
-    loadTutoringRequests();
-  });
-  document.getElementById("refreshTutoring").addEventListener("click", loadTutoringRequests);
 
   let messageFilter = "new";
 
