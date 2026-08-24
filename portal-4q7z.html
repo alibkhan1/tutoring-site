@@ -91,8 +91,33 @@
   </div>
 
   <div class="portal-tab-panel" id="portalPanelMeetings" role="tabpanel">
+  <p class="eyebrow" style="justify-content:center;">This meeting's attendance</p>
+  <h2>Update attendance check-in</h2>
+
+  <div style="display:flex;gap:8px;justify-content:center;margin:18px 0;">
+    <button type="button" class="btn btn-ghost portal-mode-button active" id="modeQR" aria-pressed="true">Attendance QR</button>
+    <button type="button" class="btn btn-ghost portal-mode-button" id="modeLink" aria-pressed="false">Attendance link</button>
+  </div>
+
+  <div id="qrMode">
+    <div class="current" id="qrPreview">No QR code uploaded yet</div>
+    <input type="file" id="qrUpload" accept="image/*">
+    <button class="btn btn-outline" type="button" id="clearQrBtn" style="margin-top:12px;">Clear attendance QR</button>
+  </div>
+
+  <div id="linkMode" style="display:none;">
+    <p class="note" style="text-align:left;margin-top:0;">Use the attendance/check-in URL for this meeting. This is not a video-call or meeting-join link.</p>
+    <input type="url" id="linkInput" placeholder="https://attendance-link..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);">
+    <button class="btn btn-navy" type="button" id="saveLinkBtn" style="margin-top:12px;">Save attendance link</button>
+    <p class="note" style="text-align:left;">Leave the field blank and save to clear the old link.</p>
+  </div>
+
+  <p class="form-msg" id="adminMsg"></p>
+  <p class="note" style="text-align:left;">This updates instantly for every visitor on the Meetings page &mdash; no re-upload needed.</p>
+
+  <hr style="border:none;border-top:1px solid var(--line);margin:28px 0;">
+
   <p class="eyebrow" style="justify-content:center;">This week's slides</p>
-  <h2>Update meeting slides</h2>
   <p class="note" style="text-align:left;margin-top:0;">Paste a published Google Slides URL below. You can paste either the published viewing link or an embed link; the portal will automatically convert it to the correct embed format.</p>
   <input type="url" id="slidesInput" placeholder="https://docs.google.com/presentation/d/e/.../pub?..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);font-size:0.85rem;">
   <button class="btn btn-navy" type="button" id="saveSlidesBtn" style="margin-top:12px;">Save slides</button>
@@ -368,13 +393,39 @@
   });
 
   async function loadCurrent() {
+    showQrPreview(null);
+    document.getElementById("linkInput").value = "";
     document.getElementById("slidesInput").value = "";
+    const { data, error: meetingErr } = await sb.from("current_meeting_access").select("*").eq("id", 1).single();
+    if (meetingErr) console.error("Could not load meeting access:", meetingErr);
+    if (data && data.kind === "qr" && data.value) {
+      showQrPreview(data.value);
+      setAttendanceMode("qr");
+    } else if (data && data.kind === "link" && data.value) {
+      document.getElementById("linkInput").value = data.value;
+      setAttendanceMode("link");
+    } else {
+      setAttendanceMode("qr");
+    }
     const { data: slides, error: slidesLoadErr } = await sb.from("current_slides").select("*").eq("id", 1).maybeSingle();
     if (slidesLoadErr) console.error("Could not load slides:", slidesLoadErr);
     if (slides && slides.embed_url) {
       document.getElementById("slidesInput").value = slides.embed_url;
     }
   }
+
+  function setAttendanceMode(mode) {
+    const isQr = mode === "qr";
+    document.getElementById("qrMode").style.display = isQr ? "block" : "none";
+    document.getElementById("linkMode").style.display = isQr ? "none" : "block";
+    document.getElementById("modeQR").classList.toggle("active", isQr);
+    document.getElementById("modeLink").classList.toggle("active", !isQr);
+    document.getElementById("modeQR").setAttribute("aria-pressed", String(isQr));
+    document.getElementById("modeLink").setAttribute("aria-pressed", String(!isQr));
+  }
+
+  document.getElementById("modeQR").addEventListener("click", () => setAttendanceMode("qr"));
+  document.getElementById("modeLink").addEventListener("click", () => setAttendanceMode("link"));
 
   function safeHttpsUrl(rawUrl) {
     try {
@@ -384,6 +435,67 @@
       return null;
     }
   }
+
+  function showQrPreview(rawUrl) {
+    const url = safeHttpsUrl(rawUrl);
+    const preview = document.getElementById("qrPreview");
+    preview.replaceChildren();
+    if (!url) {
+      preview.textContent = "No valid QR code uploaded yet";
+      return;
+    }
+    const image = document.createElement("img");
+    image.src = url;
+    image.alt = "Current meeting QR code";
+    preview.appendChild(image);
+  }
+
+  document.getElementById("qrUpload").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const msg = document.getElementById("adminMsg");
+    const allowedTypes = { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" };
+    const extension = allowedTypes[file.type];
+    if (!extension) { msg.textContent = "Upload a PNG, JPG, or WebP image."; msg.className = "form-msg err"; e.target.value = ""; return; }
+    if (file.size > 5 * 1024 * 1024) { msg.textContent = "The QR image must be 5 MB or smaller."; msg.className = "form-msg err"; e.target.value = ""; return; }
+    e.target.disabled = true;
+    msg.textContent = "Uploading…";
+    msg.className = "form-msg";
+    const path = `meeting-qr-${Date.now()}.${extension}`;
+    const { error: upErr } = await sb.storage.from("meeting-qr").upload(path, file, { cacheControl: "3600", contentType: file.type, upsert: false });
+    if (upErr) { console.error("QR upload failed:", upErr); msg.textContent = `Upload failed: ${upErr.message}`; msg.className = "form-msg err"; e.target.disabled = false; e.target.value = ""; return; }
+    const { data: pub } = sb.storage.from("meeting-qr").getPublicUrl(path);
+    const publicUrl = safeHttpsUrl(pub?.publicUrl);
+    if (!publicUrl) { msg.textContent = "The image uploaded, but its public URL was invalid."; msg.className = "form-msg err"; e.target.disabled = false; e.target.value = ""; return; }
+    const { error: saveQrErr } = await sb.from("current_meeting_access").upsert({ id: 1, kind: "qr", value: publicUrl, updated_at: new Date().toISOString() });
+    if (saveQrErr) { console.error("QR database save failed:", saveQrErr); msg.textContent = `QR uploaded, but database save failed: ${saveQrErr.message}`; msg.className = "form-msg err"; e.target.disabled = false; e.target.value = ""; return; }
+    showQrPreview(publicUrl);
+    msg.textContent = "Live on the Meetings page.";
+    msg.className = "form-msg ok";
+    e.target.disabled = false;
+    e.target.value = "";
+  });
+
+  document.getElementById("saveLinkBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("adminMsg");
+    const rawUrl = document.getElementById("linkInput").value.trim();
+    const url = rawUrl ? safeHttpsUrl(rawUrl) : null;
+    if (rawUrl && !url) { msg.textContent = "Enter a valid https:// attendance link."; msg.className = "form-msg err"; return; }
+    const { error: saveLinkErr } = await sb.from("current_meeting_access").upsert({ id: 1, kind: url ? "link" : null, value: url || null, updated_at: new Date().toISOString() });
+    if (saveLinkErr) { console.error("Meeting link save failed:", saveLinkErr); msg.textContent = `Save failed: ${saveLinkErr.message}`; msg.className = "form-msg err"; return; }
+    msg.textContent = url ? "Live on the Meetings page." : "Attendance link cleared.";
+    msg.className = "form-msg ok";
+  });
+
+  document.getElementById("clearQrBtn").addEventListener("click", async () => {
+    const msg = document.getElementById("adminMsg");
+    const { error: clearQrErr } = await sb.from("current_meeting_access").upsert({ id: 1, kind: null, value: null, updated_at: new Date().toISOString() });
+    if (clearQrErr) { console.error("QR reset failed:", clearQrErr); msg.textContent = `Clear failed: ${clearQrErr.message}`; msg.className = "form-msg err"; return; }
+    document.getElementById("qrUpload").value = "";
+    showQrPreview(null);
+    msg.textContent = "Attendance QR cleared.";
+    msg.className = "form-msg ok";
+  });
 
   function normalizeGoogleSlidesUrl(rawUrl) {
     try {
