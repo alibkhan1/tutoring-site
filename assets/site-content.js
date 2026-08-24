@@ -166,6 +166,106 @@
     if (requirementGrid) requirementGrid.classList.toggle("single", event.sections.poster !== true || !safeAssetUrl(event.poster_url));
   }
 
+  function safeSiteLink(rawUrl) {
+    const value = String(rawUrl || "").trim();
+    if (/^[a-zA-Z0-9_-]+\.html(?:[#?].*)?$/.test(value)) return value;
+    return safeHttpsUrl(value);
+  }
+
+  function renderEventsPoints(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+    const textFields = {
+      pointsPageEyebrow: raw.points_eyebrow,
+      pointsPageTitle: raw.points_title,
+      pointsPageIntro: raw.points_intro,
+      eventsSectionEyebrow: raw.events_eyebrow,
+      eventsSectionTitle: raw.events_title,
+      eventsSectionIntro: raw.events_intro
+    };
+    Object.entries(textFields).forEach(([id, value]) => {
+      const element = document.getElementById(id);
+      if (element && typeof value === "string" && value.trim()) element.textContent = value;
+    });
+
+    const tableBody = document.getElementById("pointsTableBody");
+    if (tableBody && Array.isArray(raw.opportunities)) {
+      tableBody.replaceChildren();
+      raw.opportunities.forEach((item) => {
+        if (!item || (!item.opportunity && !item.details && !item.points)) return;
+        const row = document.createElement("tr");
+        [item.opportunity, item.details, item.points].forEach((value, index) => {
+          const cell = document.createElement("td");
+          if (index === 2) cell.className = "pts";
+          cell.textContent = String(value || "").slice(0, index === 1 ? 240 : 120);
+          row.appendChild(cell);
+        });
+        tableBody.appendChild(row);
+      });
+    }
+
+    const grid = document.getElementById("eventsGrid");
+    if (!grid || !Array.isArray(raw.events)) return;
+    grid.replaceChildren();
+    raw.events.forEach((item, index) => {
+      if (!item || (!item.title && !item.description)) return;
+      const images = (Array.isArray(item.images) ? item.images : []).map(safeAssetUrl).filter(Boolean).slice(0, 8);
+      const card = document.createElement("article");
+      card.className = `event-card${index === 0 && images.length ? " event-card-wide" : ""}${images.length ? "" : " event-card-text"}`;
+      if (images.length === 1) {
+        const media = document.createElement("div");
+        media.className = "event-media";
+        const image = document.createElement("img");
+        image.src = images[0];
+        image.alt = "";
+        media.appendChild(image);
+        card.appendChild(media);
+      } else if (images.length > 1) {
+        const carousel = document.createElement("div");
+        carousel.className = "media-carousel";
+        carousel.dataset.interval = "4500";
+        carousel.setAttribute("aria-label", `${String(item.title || "Event").slice(0, 120)} photos`);
+        images.forEach((url, imageIndex) => {
+          const slide = document.createElement("div");
+          slide.className = `media-slide${imageIndex === 0 ? " active" : ""}`;
+          const image = document.createElement("img");
+          image.src = url;
+          image.alt = "";
+          slide.appendChild(image);
+          carousel.appendChild(slide);
+        });
+        const dots = document.createElement("div");
+        dots.className = "media-dots";
+        carousel.appendChild(dots);
+        card.appendChild(carousel);
+      }
+
+      const copy = document.createElement("div");
+      copy.className = "event-copy";
+      const kicker = document.createElement("span");
+      kicker.className = "event-kicker";
+      kicker.textContent = String(item.kicker || "Event").slice(0, 80);
+      const title = document.createElement("h3");
+      title.textContent = String(item.title || "Event").slice(0, 160);
+      const description = document.createElement("p");
+      description.textContent = String(item.description || "").slice(0, 1200);
+      copy.append(kicker, title, description);
+      const linkUrl = safeSiteLink(item.link_url);
+      if (linkUrl && item.link_label) {
+        const link = document.createElement("a");
+        link.className = "text-link";
+        link.href = linkUrl;
+        link.textContent = String(item.link_label).slice(0, 100);
+        if (linkUrl.startsWith("https://")) {
+          link.target = "_blank";
+          link.rel = "noopener";
+        }
+        copy.appendChild(link);
+      }
+      card.appendChild(copy);
+      grid.appendChild(card);
+    });
+  }
+
   window.siteContentReady = (async () => {
     await readyForDom;
     if (!window.supabase || !window.SUPABASE_URL || !window.SUPABASE_ANON_KEY) {
@@ -181,6 +281,7 @@
     }
 
     renderUpcomingEvent(data.upcoming_event);
+    renderEventsPoints(data.events_points);
 
     const slider = document.getElementById("upcomingSlider");
     if (slider && Array.isArray(data.announcements) && data.announcements.length) {

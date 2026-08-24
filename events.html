@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Events &amp; Points — BVSW Math NHS</title>
+<link rel="icon" type="image/png" href="assets/math-nhs-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
@@ -30,9 +31,9 @@
 
 <header class="hero" style="padding-bottom:56px;">
   <div class="wrap hero-inner" style="padding-bottom:0;">
-    <p class="eyebrow">25 points to induct</p>
-    <h1 style="font-size:clamp(2rem,4vw,2.8rem);">Events &amp; Points</h1>
-    <p class="lede">Every way to earn points this year, in one table. Mix and match &mdash; there's no single required path.</p>
+    <p class="eyebrow" id="pointsPageEyebrow">25 points to induct</p>
+    <h1 id="pointsPageTitle" style="font-size:clamp(2rem,4vw,2.8rem);">Events &amp; Points</h1>
+    <p class="lede" id="pointsPageIntro">Every way to earn points this year, in one table. Mix and match &mdash; there's no single required path.</p>
   </div>
 </header>
 
@@ -44,7 +45,7 @@
       <thead>
         <tr><th>Opportunity</th><th>Details</th><th>Points</th></tr>
       </thead>
-      <tbody>
+      <tbody id="pointsTableBody">
         <tr><td>Pi Day</td><td>Volunteer at the event</td><td class="pts">8 pts</td></tr>
         <tr><td>Pi Day — prep days</td><td>Per prep day</td><td class="pts">4 pts</td></tr>
         <tr><td>STEM Fair</td><td>Be there</td><td class="pts">8 pts</td></tr>
@@ -66,12 +67,12 @@
 <section class="bg-pale">
   <div class="wrap">
     <div class="section-head">
-      <p class="eyebrow">Club life</p>
-      <h2>Past events</h2>
-      <p>Big traditions, service opportunities, and the projects our members help bring to life.</p>
+      <p class="eyebrow" id="eventsSectionEyebrow">Club life</p>
+      <h2 id="eventsSectionTitle">Past events</h2>
+      <p id="eventsSectionIntro">Big traditions, service opportunities, and the projects our members help bring to life.</p>
     </div>
 
-    <div class="event-grid">
+    <div class="event-grid" id="eventsGrid">
       <article class="event-card event-card-wide">
         <div class="event-media"><img src="assets/events/middle-school-competition.jpg" alt="Students celebrating with a trophy at the BVSW middle school math competition"></div>
         <div class="event-copy"><span class="event-kicker">Competition</span><h3>Middle School Math Competition</h3><p>We invite all of our feeder middle schools to BVSW for a friendly math competition with real trophies, treats for everyone, and a fun first look at the high-school math community.</p></div>

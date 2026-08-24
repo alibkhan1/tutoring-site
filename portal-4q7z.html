@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Officer Portal — BVSW Math NHS</title>
 <meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="assets/math-nhs-logo.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
@@ -28,6 +29,12 @@
   .repeat-editor-row.board-row { grid-template-columns:1fr 1.4fr auto; }
   .repeat-editor-row.event-requirement-row { grid-template-columns:1fr auto; }
   .repeat-editor-row.event-schedule-row-editor { grid-template-columns:1fr 2fr auto; }
+  .repeat-editor-row.points-row { grid-template-columns:1.2fr 2fr .75fr auto; }
+  .repeat-editor-row.event-card-editor { grid-template-columns:repeat(2,minmax(0,1fr)); align-items:start; }
+  .repeat-editor-row.event-card-editor .event-card-description,
+  .repeat-editor-row.event-card-editor .event-card-images,
+  .repeat-editor-row.event-card-editor .event-card-link-url { grid-column:1 / -1; }
+  .repeat-editor-row.event-card-editor .remove-editor-row { justify-self:start; }
   .portal-switches { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-top:14px; }
   .portal-switch { display:flex; align-items:flex-start; gap:10px; padding:13px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--pale); text-align:left; }
   .portal-switch input { width:18px; height:18px; margin-top:1px; accent-color:var(--navy); }
@@ -36,8 +43,11 @@
   .event-upload-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
   .event-upload-row input[type="file"] { max-width:100%; }
   @media (max-width:760px) {
-    .portal-tabs, .content-fields, .repeat-editor-row, .repeat-editor-row.board-row, .repeat-editor-row.event-requirement-row, .repeat-editor-row.event-schedule-row-editor, .portal-switches { grid-template-columns:1fr; }
+    .portal-tabs, .content-fields, .repeat-editor-row, .repeat-editor-row.board-row, .repeat-editor-row.event-requirement-row, .repeat-editor-row.event-schedule-row-editor, .repeat-editor-row.points-row, .repeat-editor-row.event-card-editor, .portal-switches { grid-template-columns:1fr; }
     .field-wide { grid-column:auto; }
+    .repeat-editor-row.event-card-editor .event-card-description,
+    .repeat-editor-row.event-card-editor .event-card-images,
+    .repeat-editor-row.event-card-editor .event-card-link-url { grid-column:auto; }
   }
 </style>
 </head>
@@ -81,34 +91,8 @@
   </div>
 
   <div class="portal-tab-panel" id="portalPanelMeetings" role="tabpanel">
-  <p class="eyebrow" style="justify-content:center;">This meeting's attendance</p>
-  <h2>Update attendance check-in</h2>
-
-  <div style="display:flex;gap:8px;justify-content:center;margin:18px 0;">
-    <button type="button" class="btn btn-ghost portal-mode-button active" id="modeQR" aria-pressed="true">Attendance QR</button>
-    <button type="button" class="btn btn-ghost portal-mode-button" id="modeLink" aria-pressed="false">Attendance link</button>
-  </div>
-
-  <div id="qrMode">
-    <div class="current" id="qrPreview">No QR code uploaded yet</div>
-    <input type="file" id="qrUpload" accept="image/*">
-    <button class="btn btn-outline" type="button" id="clearQrBtn" style="margin-top:12px;">Clear attendance QR</button>
-  </div>
-
-  <div id="linkMode" style="display:none;">
-    <p class="note" style="text-align:left;margin-top:0;">Use the attendance/check-in URL for this meeting. This is not a video-call or meeting-join link.</p>
-    <input type="url" id="linkInput" placeholder="https://attendance-link..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);">
-    <button class="btn btn-navy" type="button" id="saveLinkBtn" style="margin-top:12px;">Save attendance link</button>
-    <p class="note" style="text-align:left;">Leave the field blank and save to clear the old link.</p>
-  </div>
-
-  <p class="form-msg" id="adminMsg"></p>
-
-  <p class="note" style="text-align:left;">This updates instantly for every visitor on the Meetings page &mdash; no re-upload needed.</p>
-
-  <hr style="border:none;border-top:1px solid var(--line);margin:28px 0;">
-
   <p class="eyebrow" style="justify-content:center;">This week's slides</p>
+  <h2>Update meeting slides</h2>
   <p class="note" style="text-align:left;margin-top:0;">Paste a published Google Slides URL below. You can paste either the published viewing link or an embed link; the portal will automatically convert it to the correct embed format.</p>
   <input type="url" id="slidesInput" placeholder="https://docs.google.com/presentation/d/e/.../pub?..." style="width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:4px;font-family:var(--font-mono);font-size:0.85rem;">
   <button class="btn btn-navy" type="button" id="saveSlidesBtn" style="margin-top:12px;">Save slides</button>
@@ -160,6 +144,30 @@
       <div class="content-fields">
         <label class="field-wide">Google Sheet URL<input id="pointsTrackerInput" type="url" placeholder="https://docs.google.com/spreadsheets/..."></label>
       </div>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Events &amp; point values</h3>
+      <p class="note">These rows build the public points table. Add, remove, reorder, or change any value.</p>
+      <div class="content-fields">
+        <label>Induction label<input id="pointsEyebrowInput" type="text" maxlength="80" placeholder="25 points to induct"></label>
+        <label>Page heading<input id="pointsTitleInput" type="text" maxlength="100" placeholder="Events &amp; Points"></label>
+        <label class="field-wide">Page introduction<textarea id="pointsIntroInput" maxlength="500"></textarea></label>
+      </div>
+      <div class="repeat-editor-list" id="pointsOpportunitiesEditor"></div>
+      <button class="btn btn-outline" type="button" id="addPointsOpportunityBtn">Add point opportunity</button>
+    </div>
+
+    <div class="content-editor-block">
+      <h3>Event cards</h3>
+      <p class="note">These cards appear under Past events. Image URLs can be existing assets/events/ paths or HTTPS links; put multiple image URLs on separate lines for a carousel.</p>
+      <div class="content-fields">
+        <label>Section label<input id="eventsEyebrowInput" type="text" maxlength="80" placeholder="Club life"></label>
+        <label>Section heading<input id="eventsTitleInput" type="text" maxlength="100" placeholder="Past events"></label>
+        <label class="field-wide">Section introduction<textarea id="eventsIntroInput" maxlength="500"></textarea></label>
+      </div>
+      <div class="repeat-editor-list" id="eventCardsEditor"></div>
+      <button class="btn btn-outline" type="button" id="addEventCardBtn">Add event card</button>
     </div>
 
     <div class="content-editor-block">
@@ -360,39 +368,13 @@
   });
 
   async function loadCurrent() {
-    showQrPreview(null);
-    document.getElementById("linkInput").value = "";
     document.getElementById("slidesInput").value = "";
-    const { data, error: meetingErr } = await sb.from("current_meeting_access").select("*").eq("id", 1).single();
-    if (meetingErr) console.error("Could not load meeting access:", meetingErr);
-    if (data && data.kind === "qr" && data.value) {
-      showQrPreview(data.value);
-      setAttendanceMode("qr");
-    } else if (data && data.kind === "link" && data.value) {
-      document.getElementById("linkInput").value = data.value;
-      setAttendanceMode("link");
-    } else {
-      setAttendanceMode("qr");
-    }
     const { data: slides, error: slidesLoadErr } = await sb.from("current_slides").select("*").eq("id", 1).maybeSingle();
     if (slidesLoadErr) console.error("Could not load slides:", slidesLoadErr);
     if (slides && slides.embed_url) {
       document.getElementById("slidesInput").value = slides.embed_url;
     }
   }
-
-  function setAttendanceMode(mode) {
-    const isQr = mode === "qr";
-    document.getElementById("qrMode").style.display = isQr ? "block" : "none";
-    document.getElementById("linkMode").style.display = isQr ? "none" : "block";
-    document.getElementById("modeQR").classList.toggle("active", isQr);
-    document.getElementById("modeLink").classList.toggle("active", !isQr);
-    document.getElementById("modeQR").setAttribute("aria-pressed", String(isQr));
-    document.getElementById("modeLink").setAttribute("aria-pressed", String(!isQr));
-  }
-
-  document.getElementById("modeQR").addEventListener("click", () => setAttendanceMode("qr"));
-  document.getElementById("modeLink").addEventListener("click", () => setAttendanceMode("link"));
 
   function safeHttpsUrl(rawUrl) {
     try {
@@ -402,131 +384,6 @@
       return null;
     }
   }
-
-  function showQrPreview(rawUrl) {
-    const url = safeHttpsUrl(rawUrl);
-    const preview = document.getElementById("qrPreview");
-    preview.replaceChildren();
-    if (!url) {
-      preview.textContent = "No valid QR code uploaded yet";
-      return;
-    }
-    const image = document.createElement("img");
-    image.src = url;
-    image.alt = "Current meeting QR code";
-    preview.appendChild(image);
-  }
-
-  document.getElementById("qrUpload").addEventListener("change", async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const msg = document.getElementById("adminMsg");
-    const allowedTypes = {
-      "image/png": "png",
-      "image/jpeg": "jpg",
-      "image/webp": "webp"
-    };
-    const extension = allowedTypes[file.type];
-    if (!extension) {
-      msg.textContent = "Upload a PNG, JPG, or WebP image.";
-      msg.className = "form-msg err";
-      e.target.value = "";
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      msg.textContent = "The QR image must be 5 MB or smaller.";
-      msg.className = "form-msg err";
-      e.target.value = "";
-      return;
-    }
-
-    e.target.disabled = true;
-    msg.textContent = "Uploading…";
-    msg.className = "form-msg";
-    const path = `meeting-qr-${Date.now()}.${extension}`;
-    const { error: upErr } = await sb.storage.from("meeting-qr").upload(path, file, {
-      cacheControl: "3600",
-      contentType: file.type,
-      upsert: false
-    });
-    if (upErr) {
-      console.error("QR upload failed:", upErr);
-      msg.textContent = `Upload failed: ${upErr.message}`;
-      msg.className = "form-msg err";
-      e.target.disabled = false;
-      e.target.value = "";
-      return;
-    }
-    const { data: pub } = sb.storage.from("meeting-qr").getPublicUrl(path);
-    const publicUrl = safeHttpsUrl(pub?.publicUrl);
-    if (!publicUrl) {
-      msg.textContent = "The image uploaded, but its public URL was invalid.";
-      msg.className = "form-msg err";
-      e.target.disabled = false;
-      e.target.value = "";
-      return;
-    }
-    const { error: saveQrErr } = await sb.from("current_meeting_access").upsert({
-      id: 1,
-      kind: "qr",
-      value: publicUrl,
-      updated_at: new Date().toISOString()
-    });
-    if (saveQrErr) {
-      console.error("QR database save failed:", saveQrErr);
-      msg.textContent = `QR uploaded, but database save failed: ${saveQrErr.message}`;
-      msg.className = "form-msg err";
-      e.target.disabled = false;
-      e.target.value = "";
-      return;
-    }
-    showQrPreview(publicUrl);
-    msg.textContent = "Live on the Meetings page.";
-    msg.className = "form-msg ok";
-    e.target.disabled = false;
-    e.target.value = "";
-  });
-
-  document.getElementById("saveLinkBtn").addEventListener("click", async () => {
-    const msg = document.getElementById("adminMsg");
-    const rawUrl = document.getElementById("linkInput").value.trim();
-    const url = rawUrl ? safeHttpsUrl(rawUrl) : null;
-    if (rawUrl && !url) { msg.textContent = "Enter a valid https:// attendance link."; msg.className = "form-msg err"; return; }
-    const { error: saveLinkErr } = await sb.from("current_meeting_access").upsert({
-      id: 1,
-      kind: url ? "link" : null,
-      value: url || null,
-      updated_at: new Date().toISOString()
-    });
-    if (saveLinkErr) {
-      console.error("Meeting link save failed:", saveLinkErr);
-      msg.textContent = `Save failed: ${saveLinkErr.message}`;
-      msg.className = "form-msg err";
-      return;
-    }
-    msg.textContent = url ? "Live on the Meetings page." : "Attendance link cleared.";
-    msg.className = "form-msg ok";
-  });
-
-  document.getElementById("clearQrBtn").addEventListener("click", async () => {
-    const msg = document.getElementById("adminMsg");
-    const { error: clearQrErr } = await sb.from("current_meeting_access").upsert({
-      id: 1,
-      kind: null,
-      value: null,
-      updated_at: new Date().toISOString()
-    });
-    if (clearQrErr) {
-      console.error("QR reset failed:", clearQrErr);
-      msg.textContent = `Clear failed: ${clearQrErr.message}`;
-      msg.className = "form-msg err";
-      return;
-    }
-    document.getElementById("qrUpload").value = "";
-    showQrPreview(null);
-    msg.textContent = "Attendance QR cleared.";
-    msg.className = "form-msg ok";
-  });
 
   function normalizeGoogleSlidesUrl(rawUrl) {
     try {
@@ -612,6 +469,70 @@
     return row;
   }
 
+  const EVENTS_POINTS_DEFAULTS = {
+    points_eyebrow: "25 points to induct",
+    points_title: "Events & Points",
+    points_intro: "Every way to earn points this year, in one table. Mix and match — there's no single required path.",
+    opportunities: [],
+    events_eyebrow: "Club life",
+    events_title: "Past events",
+    events_intro: "Big traditions, service opportunities, and the projects our members help bring to life.",
+    events: []
+  };
+
+  function makePointsRow(item = {}) {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row points-row";
+    [["Opportunity", "points-opportunity", item.opportunity || "", "Pi Day"], ["Details", "points-details", item.details || "", "Volunteer at the event"], ["Points", "points-value", item.points || "", "8 pts"]].forEach(([text, className, value, placeholder]) => {
+      const label = document.createElement("label");
+      label.append(text);
+      const input = document.createElement("input");
+      input.className = className;
+      input.value = value;
+      input.placeholder = placeholder;
+      input.maxLength = className === "points-details" ? 240 : 120;
+      label.appendChild(input);
+      row.appendChild(label);
+    });
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.appendChild(remove);
+    return row;
+  }
+
+  function makeEventCardRow(item = {}) {
+    const row = document.createElement("div");
+    row.className = "repeat-editor-row event-card-editor";
+    const fields = [
+      ["Label", "event-card-kicker", item.kicker || "", "Competition", "input"],
+      ["Event title", "event-card-title", item.title || "", "Middle School Math Competition", "input"],
+      ["Description", "event-card-description", item.description || "", "What members do at this event", "textarea"],
+      ["Image URLs (one per line)", "event-card-images", Array.isArray(item.images) ? item.images.join("\n") : "", "assets/events/photo.jpg", "textarea"],
+      ["Optional link text", "event-card-link-label", item.link_label || "", "See poster guidelines →", "input"],
+      ["Optional link URL", "event-card-link-url", item.link_url || "", "posters.html or https://...", "input"]
+    ];
+    fields.forEach(([text, className, value, placeholder, kind]) => {
+      const label = document.createElement("label");
+      label.className = className;
+      label.append(text);
+      const field = document.createElement(kind);
+      field.className = `${className}-input`;
+      field.value = value;
+      field.placeholder = placeholder;
+      field.maxLength = kind === "textarea" ? 1200 : 160;
+      label.appendChild(field);
+      row.appendChild(label);
+    });
+    const remove = document.createElement("button");
+    remove.className = "btn btn-outline remove-editor-row";
+    remove.type = "button";
+    remove.textContent = "Remove";
+    row.appendChild(remove);
+    return row;
+  }
+
   function renderSiteContentEditors(data) {
     const announcements = document.getElementById("announcementEditor");
     announcements.replaceChildren();
@@ -625,6 +546,24 @@
     document.getElementById("posterDueInput").value = poster.due || "";
     document.getElementById("pointsTrackerInput").value = data.points_tracker_url || "";
     document.getElementById("boardYearInput").value = data.board_year || "";
+
+    const eventsPoints = data.events_points && typeof data.events_points === "object" && !Array.isArray(data.events_points)
+      ? { ...EVENTS_POINTS_DEFAULTS, ...data.events_points }
+      : EVENTS_POINTS_DEFAULTS;
+    document.getElementById("pointsEyebrowInput").value = eventsPoints.points_eyebrow || "";
+    document.getElementById("pointsTitleInput").value = eventsPoints.points_title || "";
+    document.getElementById("pointsIntroInput").value = eventsPoints.points_intro || "";
+    document.getElementById("eventsEyebrowInput").value = eventsPoints.events_eyebrow || "";
+    document.getElementById("eventsTitleInput").value = eventsPoints.events_title || "";
+    document.getElementById("eventsIntroInput").value = eventsPoints.events_intro || "";
+
+    const opportunities = document.getElementById("pointsOpportunitiesEditor");
+    opportunities.replaceChildren();
+    (Array.isArray(eventsPoints.opportunities) ? eventsPoints.opportunities : []).forEach((item) => opportunities.appendChild(makePointsRow(item)));
+
+    const eventCards = document.getElementById("eventCardsEditor");
+    eventCards.replaceChildren();
+    (Array.isArray(eventsPoints.events) ? eventsPoints.events : []).forEach((item) => eventCards.appendChild(makeEventCardRow(item)));
 
     const board = document.getElementById("boardEditor");
     board.replaceChildren();
@@ -658,6 +597,12 @@
   });
   document.getElementById("addBoardMemberBtn").addEventListener("click", () => {
     document.getElementById("boardEditor").appendChild(makeBoardRow());
+  });
+  document.getElementById("addPointsOpportunityBtn").addEventListener("click", () => {
+    document.getElementById("pointsOpportunitiesEditor").appendChild(makePointsRow());
+  });
+  document.getElementById("addEventCardBtn").addEventListener("click", () => {
+    document.getElementById("eventCardsEditor").appendChild(makeEventCardRow());
   });
   document.querySelectorAll(".repeat-editor-list").forEach((list) => {
     list.addEventListener("click", (event) => {
@@ -716,6 +661,53 @@
       return;
     }
 
+    const opportunities = [...document.querySelectorAll(".points-row")].map((row) => ({
+      opportunity: row.querySelector(".points-opportunity").value.trim(),
+      details: row.querySelector(".points-details").value.trim(),
+      points: row.querySelector(".points-value").value.trim()
+    })).filter((item) => item.opportunity || item.details || item.points);
+    if (opportunities.some((item) => !item.opportunity || !item.details || !item.points)) {
+      msg.textContent = "Each point opportunity needs a name, details, and point value.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const eventCards = [...document.querySelectorAll(".event-card-editor")].map((row) => ({
+      kicker: row.querySelector(".event-card-kicker-input").value.trim(),
+      title: row.querySelector(".event-card-title-input").value.trim(),
+      description: row.querySelector(".event-card-description-input").value.trim(),
+      images: row.querySelector(".event-card-images-input").value.split(/\r?\n/).map((value) => value.trim()).filter(Boolean),
+      link_label: row.querySelector(".event-card-link-label-input").value.trim(),
+      link_url: row.querySelector(".event-card-link-url-input").value.trim()
+    })).filter((item) => item.kicker || item.title || item.description || item.images.length || item.link_label || item.link_url);
+    if (eventCards.some((item) => !item.title || !item.description || (Boolean(item.link_label) !== Boolean(item.link_url)))) {
+      msg.textContent = "Each event needs a title and description; optional links need both text and a URL.";
+      msg.className = "form-msg err";
+      return;
+    }
+    const invalidEventAsset = eventCards.some((item) => item.images.some((url) => !safeEventAssetUrl(url)) || (item.link_url && !/^(?:https:\/\/|[a-zA-Z0-9_-]+\.html(?:[#?].*)?)$/.test(item.link_url)));
+    if (invalidEventAsset) {
+      msg.textContent = "Event images must be HTTPS URLs or assets/ paths. Event links must be HTTPS or a local .html page.";
+      msg.className = "form-msg err";
+      return;
+    }
+
+    const eventsPoints = {
+      points_eyebrow: document.getElementById("pointsEyebrowInput").value.trim(),
+      points_title: document.getElementById("pointsTitleInput").value.trim(),
+      points_intro: document.getElementById("pointsIntroInput").value.trim(),
+      opportunities,
+      events_eyebrow: document.getElementById("eventsEyebrowInput").value.trim(),
+      events_title: document.getElementById("eventsTitleInput").value.trim(),
+      events_intro: document.getElementById("eventsIntroInput").value.trim(),
+      events: eventCards
+    };
+    if (!eventsPoints.points_eyebrow || !eventsPoints.points_title || !eventsPoints.points_intro || !eventsPoints.events_eyebrow || !eventsPoints.events_title || !eventsPoints.events_intro) {
+      msg.textContent = "Fill in the headings and introductions for both Events & Points sections.";
+      msg.className = "form-msg err";
+      return;
+    }
+
     msg.textContent = "Saving…";
     msg.className = "form-msg";
     const { error: saveContentErr } = await sb.from("site_content").upsert({
@@ -725,6 +717,7 @@
       points_tracker_url: pointsUrl,
       board_year: boardYear,
       board_members: boardMembers,
+      events_points: eventsPoints,
       updated_at: new Date().toISOString()
     });
     if (saveContentErr) {
