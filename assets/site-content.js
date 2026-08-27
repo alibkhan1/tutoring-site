@@ -87,6 +87,18 @@
     });
     setText("[data-upcoming-label]", event.nav_label);
 
+    const homeLink = document.querySelector("[data-home-custom-link]");
+    if (homeLink) {
+      const url = safeHttpsUrl(event.signup_url);
+      homeLink.hidden = !url;
+      if (url) {
+        homeLink.href = url;
+        homeLink.target = "_blank";
+        homeLink.rel = "noopener";
+        homeLink.textContent = `${String(event.signup_label || "Open link").slice(0, 50)} →`;
+      }
+    }
+
     if (!document.body.hasAttribute("data-upcoming-event-page")) return;
     if (!event.visible) {
       location.replace("index.html");
